@@ -1,53 +1,98 @@
-.rulesets-menu-content {
-    width: 100%;
-    height: 100%;
+/* --- Settings Description --- */
+.orp-settings-description {
+    margin-left: 16px;
+}
+
+/* --- Shared Layout: Creation Row & Saved Items --- */
+.orp-creation-row {
     display: flex;
     flex-direction: row;
-    flex-wrap: wrap;
-    align-content: flex-start;
-    gap: 0.3rem;
+    gap: 12px;
+    align-items: flex-end;
+    background-color: var(--setting-items-background);
+    border-radius: var(--setting-items-radius);
+    margin-bottom: 32px;
+    padding: 16px 16px 32px 16px;
 }
 
-.add-ruleset-button, .apply-ruleset-button {
-    height: 3.3em;
-    font-size: large;
-    font-weight: 800;
-    background-color: transparent !important;
-    color: var(--interactive-accent);
-    box-sizing: border-box;
-    margin: 6px 6px 6px 0;
-}
-
-.add-ruleset-button:hover, .apply-ruleset-button:hover {
-    font-size: large;
-    box-shadow: 0 0 1px 3px var(--interactive-accent-hover) inset;
-    color: var(--interactive-accent-hover);
-}
-
-.ruleset-creation-content {
+.orp-input-wrap {
     display: flex;
     flex-direction: column;
+    gap: 8px;
 }
 
-.ruleset-creation-content h4 {
-    margin: 12px 0 6px 0;
+.orp-label {
+    color: var(--text-muted);
+    font-weight: bold;
+    text-transform: uppercase;
+    font-size: 0.7em;
+    margin-left: 4px;
 }
 
-.ruleset-creation-content button {
-    margin: 12px 0 0 0;
+.orp-creation-name {
+    flex: 1;
 }
 
-.ruleset-creation-content input {
-    background-color: transparent;
-    box-shadow: 0 0 1px 2px var(--interactive-accent) inset;    
+.orp-creation-rules {
+    flex: 3;
 }
 
-.ruleset-creation-content textarea {
-    background-color: transparent;
-    box-shadow: 0 0 1px 2px var(--interactive-accent) inset;    
+.orp-creation-actions {
+    flex: 0;
 }
 
-.rulesets-menu-title {
+.orp-input,
+.orp-saved-text-display {
+    width: 100%;
+    background-color: var(--background-primary);
+    border: 1px solid var(--background-modifier-border);
+    color: var(--text-normal);
+    border-radius: var(--input-radius, 4px);
+    height: 32px;
+    padding: var(--input-padding-y, 4px) var(--input-padding-x, 8px);
+}
+
+.orp-saved-text-display {
     display: flex;
-    flex-direction: row;
+    align-items: center;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.orp-font-monospace {
+    font-family: var(--font-monospace);
+}
+
+.orp-creation-rules .orp-input {
+    font-family: var(--font-monospace);
+}
+
+.orp-action-buttons {
+    display: flex;
+    gap: 8px;
+}
+
+/* --- Saved List --- */
+.orp-saved-list {
+    border-radius: var(--setting-items-radius);
+    margin-top: 12px;
+}
+
+.orp-saved-rule-item {
+    margin-bottom: 12px; 
+    padding-bottom: 16px; 
+}
+
+/* --- Modal --- */
+.rulesets-menu-content {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.apply-ruleset-button {
+    border: 1px solid var(--interactive-accent);
+    color: var(--interactive-accent);
+    border-radius: var(--button-radius, 4px);
 }

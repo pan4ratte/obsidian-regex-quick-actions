@@ -1,379 +1,239 @@
-import { App, BaseComponent, ButtonComponent, Component, EventRef, MarkdownView, Modal, Notice, Plugin, PluginSettingTab, Setting, TextAreaComponent, TextComponent, TFile, Vault, Command, Editor, Hotkey } from 'obsidian';
+import { App, ButtonComponent, MarkdownView, Modal, Notice, Plugin, PluginSettingTab, Setting } from 'obsidian';
+import { t } from './i18n';
 
-export default class RegexPipeline extends Plugin {
-	rules: string[]
-	pathToRulesets = this.app.vault.configDir + "/regex-rulesets";
-	indexFile = "/index.txt"
-	menu: ApplyRuleSetMenu
-	configs: SavedConfigs
-	rightClickEventRef: EventRef
-	quickCommands : Command[]
-	quickRulesChanged : boolean
-
-	log (message?: any, ...optionalParams: any[])
-	{
-		// comment this to disable logging
-		console.log("[regex-pipeline] " + message);
-	}
-
-	async onload() {
-		this.log('loading');
-		this.addSettingTab(new ORPSettings(this.app, this))
-		this.configs = await this.loadData()
-		if (this.configs == null) this.configs = new SavedConfigs(3, 3, false)
-		if (this.configs.rulesInVault) this.pathToRulesets = "/regex-rulesets"
-		this.menu = new ApplyRuleSetMenu(this.app, this)
-		this.menu.contentEl.className = "rulesets-menu-content"
-		this.menu.titleEl.className = "rulesets-menu-title"
-
-		this.addRibbonIcon('dice', 'Regex Rulesets', () => {
-			this.menu.open();
-		});
-
-		this.addCommand({
-			id: 'apply-ruleset',
-			name: 'Apply Ruleset',
-			// callback: () => {
-			// 	this.log('Simple Callback');
-			// },
-			checkCallback: (checking: boolean) => {
-				let leaf = this.app.workspace.activeLeaf;
-				if (leaf) {
-					if (!checking) {
-						this.menu.open();
-					}
-					return true;
-				}
-				return false;
-			}
-		});
-
-		this.reloadRulesets();
-		this.log("Rulesets: " + this.pathToRulesets);
-		this.log("Index: " + this.pathToRulesets + this.indexFile);
-
-	}
-
-	onunload() {
-		this.log('unloading');
-		if (this.rightClickEventRef != null) this.app.workspace.offref(this.rightClickEventRef)
-	}
-
-	async reloadRulesets() {
-		if (!await this.app.vault.adapter.exists(this.pathToRulesets))
-			await this.app.vault.createFolder(this.pathToRulesets)
-		if (!await this.app.vault.adapter.exists(this.pathToRulesets + this.indexFile))
-			await this.app.vault.adapter.write(this.pathToRulesets + this.indexFile, "").catch((r) => {
-				new Notice("Failed to write to index file: " + r)
-			});
-
-		let p = this.app.vault.adapter.read(this.pathToRulesets + this.indexFile);
-		p.then(s => {
-			this.rules = s.split(/\r\n|\r|\n/);
-			this.rules = this.rules.filter((v) => v.length > 0);
-			this.log(this.rules);
-			this.updateRightclickMenu();
-			this.updateQuickCommands();
-		})
-	}
-
-	async updateQuickCommands () {
-		if (this.configs.quickCommands <= 0) return;
-		if (this.quickCommands == null) this.quickCommands = new Array<Command>();
-		let expectedCommands = Math.min(this.configs.quickCommands, this.rules.length);
-		// this.log(`setting up ${expectedCommands} commands...`)
-		for (let i = 0; i < expectedCommands; i++)
-		{
-			let r = this.rules[i];
-			let c = this.addCommand({
-				id: `ruleset: ${r}`,
-				name: r,
-				editorCheckCallback: (checking: boolean) => {
-					if (checking) return this.rules.contains(r);
-					this.applyRuleset(this.pathToRulesets + "/" + r);
-				},
-			});
-			// this.log(`pusing ${r} command...`)
-			this.quickCommands.push(c);
-			this.log(this.quickCommands)
-		}
-	}
-
-	async updateRightclickMenu () {
-		if (this.rightClickEventRef != null) this.app.workspace.offref(this.rightClickEventRef)
-		this.rightClickEventRef = this.app.workspace.on("editor-menu", (menu) => {
-			for (let i = 0; i < Math.min(this.configs.quickRules, this.rules.length); i++)
-			{
-				let rPath = this.pathToRulesets + "/" + this.rules[i]
-				
-				menu.addItem((item) => {
-					item.setTitle("Regex Pipeline: " + this.rules[i])
-					.onClick(() => {
-						this.applyRuleset(rPath)
-					});
-				});
-			}
-		})
-		this.registerEvent(this.rightClickEventRef)
-	}
-
-	async appendRulesetsToIndex(name : string) : Promise<boolean> {
-		var result : boolean = true
-		this.rules.push(name)
-		var newIndexValue = "";
-		this.rules.forEach((v, i, all) => {
-			newIndexValue += v + "\n"
-		})
-		await this.app.vault.adapter.write(this.pathToRulesets + this.indexFile, newIndexValue).catch((r) => {
-			new Notice("Failed to write to index file: " + r)
-			result = false;
-		});
-
-		return result;
-	}
-
-	async createRuleset (name : string, content : string) : Promise<boolean> {
-		var result : boolean = true
-		this.log("createRuleset: " + name);
-		var path = this.pathToRulesets + "/" + name;
-		if (await this.app.vault.adapter.exists(path)) {
-			this.log("file existed: " + path);
-			return false;
-		}
-
-		await this.app.vault.adapter.write(path, content).catch((r) => {
-			new Notice("Failed to write the ruleset file: " + r)
-			result = false;
-		});
-
-		result = await this.appendRulesetsToIndex(name)
-		return true;
-	}
-
-	async applyRuleset (ruleset : string) {
-		if (!await this.app.vault.adapter.exists(ruleset)) {
-			new Notice(ruleset + " not found!");
-			return
-		}
-		let ruleParser = /^"(.+?)"([a-z]*?)(?:\r\n|\r|\n)?->(?:\r\n|\r|\n)?"(.*?)"([a-z]*?)(?:\r\n|\r|\n)?$/gmus;
-		let ruleText = await this.app.vault.adapter.read(ruleset);
-
-		let activeMarkdownView = this.app.workspace.getActiveViewOfType(MarkdownView);
-		if (activeMarkdownView == null)
-		{
-			new Notice("No active Markdown file!");
-			return;
-		}
-
-		let subject;
-		let selectionMode;
-		if (activeMarkdownView.editor.somethingSelected())
-		{
-			subject = activeMarkdownView.editor.getSelection();
-			selectionMode = true;
-		}
-		else
-		{
-			subject = activeMarkdownView.editor.getValue();
-		}
-
-		let pos = activeMarkdownView.editor.getScrollInfo()
-		this.log(pos.top)
-
-		let count = 0;
-		let ruleMatches;
-		while (ruleMatches = ruleParser.exec(ruleText))
-		{
-			if (ruleMatches == null) break;
-			this.log("\n" + ruleMatches[1] + "\n↓↓↓↓↓\n"+ ruleMatches[3]);
-
-			let matchRule = ruleMatches[2].length == 0? new RegExp(ruleMatches[1], 'gm') : new RegExp(ruleMatches[1], ruleMatches[2]);
-			if (ruleMatches[4] == 'x') subject = subject.replace(matchRule, '');
-			else subject = subject.replace(matchRule, ruleMatches[3]);
-			count++;
-		}
-		if (selectionMode)
-			activeMarkdownView.editor.replaceSelection(subject);
-		else
-			activeMarkdownView.editor.setValue(subject);
-
-		activeMarkdownView.requestSave();
-		activeMarkdownView.editor.scrollTo(0, pos.top)
-		new Notice("Executed ruleset '" + ruleset + "' which contains " + count + " regex replacements!");
-
-	}
+interface RegexPipelineSettings {
+    rules: string[];
 }
 
-class SavedConfigs {
-	constructor(quickRules: number, quickCommands : number, rulesInVault: boolean) {
-		this.quickRules = quickRules
-		this.rulesInVault = rulesInVault
-		this.quickCommands = quickCommands
-	}
-	quickRules: number
-	quickCommands : number
-	rulesInVault: boolean
+const DEFAULT_SETTINGS: RegexPipelineSettings = {
+    rules: []
+}
+
+export default class RegexPipeline extends Plugin {
+    settings: RegexPipelineSettings;
+    pathToRulesets: string;
+    menu: ApplyRuleSetMenu;
+
+    async onload() {
+        await this.loadSettings();
+        this.pathToRulesets = this.app.vault.configDir + "/regex-rulesets";
+        this.addSettingTab(new ORPSettings(this.app, this));
+        this.menu = new ApplyRuleSetMenu(this.app, this);
+        this.menu.contentEl.className = "rulesets-menu-content";
+
+        this.addCommand({
+            id: 'apply-ruleset',
+            name: t('APPLY_RULESET'),
+            checkCallback: (checking: boolean) => {
+                let leaf = this.app.workspace.activeLeaf;
+                if (leaf) {
+                    if (!checking) {
+                        this.menu.open();
+                    }
+                    return true;
+                }
+                return false;
+            }
+        });
+
+        await this.reloadRulesets();
+    }
+
+    async loadSettings() {
+        this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+    }
+
+    async saveSettings() {
+        await this.saveData(this.settings);
+    }
+
+    async reloadRulesets() {
+        if (!await this.app.vault.adapter.exists(this.pathToRulesets)) {
+            await this.app.vault.createFolder(this.pathToRulesets);
+        }
+    }
+
+    async createRuleset(name: string, content: string): Promise<boolean> {
+        const path = this.pathToRulesets + "/" + name;
+        if (await this.app.vault.adapter.exists(path)) return false;
+        await this.app.vault.adapter.write(path, content);
+        if (!this.settings.rules.includes(name)) {
+            this.settings.rules.push(name);
+            await this.saveSettings();
+        }
+        return true;
+    }
+
+    async updateRuleset(oldName: string, newName: string, content: string): Promise<boolean> {
+        const oldPath = this.pathToRulesets + "/" + oldName;
+        const newPath = this.pathToRulesets + "/" + newName;
+        if (oldName !== newName && await this.app.vault.adapter.exists(newPath)) return false;
+        await this.app.vault.adapter.write(newPath, content);
+        if (oldName !== newName) {
+            if (await this.app.vault.adapter.exists(oldPath)) await this.app.vault.adapter.remove(oldPath);
+            this.settings.rules = this.settings.rules.map(r => r === oldName ? newName : r);
+            await this.saveSettings();
+        }
+        return true;
+    }
+
+    async deleteRuleset(name: string): Promise<void> {
+        const path = this.pathToRulesets + "/" + name;
+        if (await this.app.vault.adapter.exists(path)) await this.app.vault.adapter.remove(path);
+        this.settings.rules = this.settings.rules.filter(r => r !== name);
+        await this.saveSettings();
+    }
+
+    async applyRuleset(ruleset: string) {
+        if (!await this.app.vault.adapter.exists(ruleset)) {
+            new Notice(ruleset + t('NOT_FOUND_ERR'));
+            return;
+        }
+        const ruleParser = /^"(.+?)"([a-z]*?)(?:\r\n|\r|\n)?->(?:\r\n|\r|\n)?"(.*?)"([a-z]*?)(?:\r\n|\r|\n)?$/gmus;
+        const ruleText = await this.app.vault.adapter.read(ruleset);
+        const activeMarkdownView = this.app.workspace.getActiveViewOfType(MarkdownView);
+        if (!activeMarkdownView) return;
+
+        let subject = activeMarkdownView.editor.somethingSelected() 
+            ? activeMarkdownView.editor.getSelection() 
+            : activeMarkdownView.editor.getValue();
+
+        const pos = activeMarkdownView.editor.getScrollInfo();
+        let count = 0;
+        let ruleMatches;
+        while ((ruleMatches = ruleParser.exec(ruleText)) !== null) {
+            const matchRule = ruleMatches[2].length === 0 ? new RegExp(ruleMatches[1], 'gm') : new RegExp(ruleMatches[1], ruleMatches[2]);
+            subject = ruleMatches[4] === 'x' ? subject.replace(matchRule, '') : subject.replace(matchRule, ruleMatches[3]);
+            count++;
+        }
+        if (activeMarkdownView.editor.somethingSelected()) activeMarkdownView.editor.replaceSelection(subject);
+        else activeMarkdownView.editor.setValue(subject);
+        activeMarkdownView.editor.scrollTo(0, pos.top);
+        new Notice(t('EXECUTED_MSG', ruleset, count));
+    }
 }
 
 class ORPSettings extends PluginSettingTab {
+    plugin: RegexPipeline;
+    showCreationForm = false;
+    isEditing = false;
+    editingOriginalName = "";
+    tempName = "";
+    tempContent = "";
 
-	plugin: RegexPipeline;
-	constructor(app: App, plugin: RegexPipeline) {
-		super(app, plugin);
-	}
+    constructor(app: App, plugin: RegexPipeline) {
+        super(app, plugin);
+        this.plugin = plugin;
+    }
 
-	quickRulesCache : number
+    display() {
+        const { containerEl } = this;
+        containerEl.empty();
 
-	display() {
-		this.containerEl.empty()
-		new Setting(this.containerEl)
-			.setName("Quick Rules")
-			.setDesc("The first N rulesets in your index file will be available in the right click menu.")
-			.addSlider(c => {
-				c.setValue(this.plugin.configs.quickRules)
-				c.setLimits(0, 10, 1)
-				c.setDynamicTooltip()
-				c.showTooltip()
-				c.onChange((v) => {
-					if (v != this.plugin.configs.quickRules) this.plugin.quickRulesChanged = true;
-					this.plugin.configs.quickRules = v;
-				})
-			}) 
-		new Setting(this.containerEl)
-			.setName("Quick Rule Commands")
-			.setDesc("The first N rulesets in your index file will be available as Obsidian commands. When changing this count or re-ordering rules, existing commands will not be removed until next reload (You can also manually re-enable the plugin).")
-			.addSlider(c => {
-				c.setValue(this.plugin.configs.quickCommands)
-				c.setLimits(0, 10, 1)
-				c.setDynamicTooltip()
-				c.showTooltip()
-				c.onChange((v) => {
-					this.plugin.configs.quickCommands = v;
-					this.plugin.updateQuickCommands();
-				})
-			}) 
-		new Setting(this.containerEl)
-			.setName("Save Rules In Vault")
-			.setDesc("Reads rulesets from \".obsidian/regex-rulesets\" when off, \"./regex-ruleset\" when on (useful if you are user of ObsidianSync). ")
-			.addToggle(c => {
-				c.setValue(this.plugin.configs.rulesInVault)
-				c.onChange(v => {
-					this.plugin.configs.rulesInVault = v
-					if (v) this.plugin.pathToRulesets = "/regex-rulesets"
-					else this.plugin.pathToRulesets = this.app.vault.configDir + "/regex-rulesets"
-				})
-			})
-	}
+        containerEl.createEl("h2", { text: t('PLUGIN_NAME') });
+        containerEl.createEl("p", { 
+            text: t('PLUGIN_DESC'),
+            cls: "orp-settings-description" 
+        });
 
-	hide () {
-		this.plugin.reloadRulesets()
-		this.plugin.saveData(this.plugin.configs)
-	}
+        containerEl.createEl("h2", { text: t('MANAGE_RULESETS') });
 
+        new Setting(containerEl)
+            .setName(t('CREATE_NEW_RULESET'))
+            .addButton(btn => btn
+                .setButtonText(t('CREATE_NEW'))
+                .setCta()
+                .onClick(() => {
+                    this.isEditing = false;
+                    this.tempName = "";
+                    this.tempContent = "";
+                    this.showCreationForm = !this.showCreationForm;
+                    this.display();
+                }));
+
+        if (this.showCreationForm) {
+            const rowContainer = containerEl.createEl("div", { cls: "orp-creation-row" });
+            
+            const nameWrap = rowContainer.createEl("div", { cls: "orp-input-wrap orp-creation-name" });
+            nameWrap.createEl("small", { text: t('NAME'), cls: "orp-label" });
+            const nameInput = nameWrap.createEl("input", { type: "text", value: this.tempName, placeholder: t('PLACEHOLDER_NAME'), cls: "orp-input" });
+            nameInput.addEventListener("input", (e) => this.tempName = (e.target as HTMLInputElement).value);
+
+            const rulesWrap = rowContainer.createEl("div", { cls: "orp-input-wrap orp-creation-rules" });
+            rulesWrap.createEl("small", { text: t('RULES'), cls: "orp-label" });
+            const rulesInput = rulesWrap.createEl("input", { type: "text", value: this.tempContent, placeholder: t('PLACEHOLDER_RULES'), cls: "orp-input" });
+            rulesInput.addEventListener("input", (e) => this.tempContent = (e.target as HTMLInputElement).value);
+
+            const actionsWrap = rowContainer.createEl("div", { cls: "orp-input-wrap orp-creation-actions" });
+            const buttons = actionsWrap.createEl("div", { cls: "orp-action-buttons" });
+            
+            new ButtonComponent(buttons).setButtonText(this.isEditing ? t('UPDATE') : t('SAVE')).setCta().onClick(async () => {
+                const success = this.isEditing 
+                    ? await this.plugin.updateRuleset(this.editingOriginalName, this.tempName, this.tempContent)
+                    : await this.plugin.createRuleset(this.tempName, this.tempContent);
+                if (success) {
+                    this.showCreationForm = false;
+                    await this.plugin.reloadRulesets();
+                    this.display();
+                } else new Notice(t('NAME_EXISTS_ERR'));
+            });
+
+            new ButtonComponent(buttons).setButtonText(t('CANCEL')).onClick(() => {
+                this.showCreationForm = false;
+                this.display();
+            });
+        }
+
+        const listWrapper = containerEl.createEl("div", { cls: "orp-saved-list" });
+        this.plugin.settings.rules.forEach(async name => {
+            const content = await this.plugin.app.vault.adapter.read(this.plugin.pathToRulesets + "/" + name);
+            const itemRow = listWrapper.createEl("div", { cls: "orp-saved-rule-item orp-creation-row" });
+
+            const nameWrap = itemRow.createEl("div", { cls: "orp-input-wrap orp-creation-name" });
+            nameWrap.createEl("small", { text: t('NAME'), cls: "orp-label" });
+            nameWrap.createEl("div", { text: name, cls: "orp-saved-text-display" });
+
+            const rulesWrap = itemRow.createEl("div", { cls: "orp-input-wrap orp-creation-rules" });
+            rulesWrap.createEl("small", { text: t('RULES'), cls: "orp-label" });
+            rulesWrap.createEl("div", { text: content, cls: "orp-saved-text-display orp-font-monospace" });
+
+            const actionsWrap = itemRow.createEl("div", { cls: "orp-input-wrap orp-creation-actions" });
+            const buttons = actionsWrap.createEl("div", { cls: "orp-action-buttons" });
+
+            new ButtonComponent(buttons).setIcon("pencil").setTooltip(t('EDIT_TOOLTIP')).onClick(() => {
+                this.tempContent = content;
+                this.tempName = name;
+                this.editingOriginalName = name;
+                this.isEditing = true;
+                this.showCreationForm = true;
+                this.display();
+            });
+
+            new ButtonComponent(buttons).setIcon("trash").setWarning().setTooltip(t('DELETE_TOOLTIP')).onClick(async () => {
+                if (confirm(t('DELETE_CONFIRM', name))) {
+                    await this.plugin.deleteRuleset(name);
+                    this.display();
+                }
+            });
+        });
+    }
 }
 
 class ApplyRuleSetMenu extends Modal {
-	plugin: RegexPipeline;
-	constructor(app: App, plugin: RegexPipeline) {
-		super(app);
-		this.plugin = plugin;
-		this.modalEl.style.setProperty("width", "60vw");
-		this.modalEl.style.setProperty("max-height", "60vh");
-		this.modalEl.style.setProperty("padding", "2rem");
-		this.titleEl.createEl("h1", null, el => {
-			el.innerHTML = this.plugin.pathToRulesets + "/...";
-			el.style.setProperty("display", "inline-block");
-			el.style.setProperty("width", "92%");
-			el.style.setProperty("max-width", "480px");
-			el.style.setProperty("margin", "12 0 8");
-		});
-		this.titleEl.createEl("h1", null, el => { el.style.setProperty("flex-grow", "1") });
-		var reloadButton = new ButtonComponent(this.titleEl)
-			.setButtonText("RELOAD")
-			.onClick(async (evt) => {
-				await this.plugin.reloadRulesets();
-				this.onClose();
-				this.onOpen();
-			});
-		reloadButton.buttonEl.style.setProperty("display", "inline-block")
-		reloadButton.buttonEl.style.setProperty("bottom", "8px")
-		reloadButton.buttonEl.style.setProperty("margin", "auto")
-	}
-
-	onOpen() {
-		for (let i = 0; i < this.plugin.rules.length; i++)
-		{
-			// new Setting(contentEl)
-			// 	.setName(this.plugin.rules[i])
-			// 	.addButton(btn => btn.onClick(async () => {
-			// 		this.plugin.applyRuleset(this.plugin.pathToRulesets + "/" + this.plugin.rules[i])
-			// 		this.close();
-			// 	}).setButtonText("Apply"));
-			var ruleset = new ButtonComponent(this.contentEl)
-				.setButtonText(this.plugin.rules[i])
-				.onClick(async (evt) => {
-					this.plugin.applyRuleset(this.plugin.pathToRulesets + "/" + this.plugin.rules[i])
-					this.close();
-				});
-			ruleset.buttonEl.className = "apply-ruleset-button";
-		}
-		this.titleEl.getElementsByTagName("h1")[0].innerHTML = this.plugin.pathToRulesets + "/...";
-		var addButton = new ButtonComponent(this.contentEl)
-			.setButtonText("+")
-			.onClick(async (evt) => {
-				new NewRulesetPanel(this.app, this.plugin).open();
-			});
-		addButton.buttonEl.className = "add-ruleset-button";
-		addButton.buttonEl.style.setProperty("width", "3.3em");
-	}
-
-	onClose() {
-		let {contentEl} = this;
-		contentEl.empty();
-	}
-}
-
-class NewRulesetPanel extends Modal {
-
-	plugin: RegexPipeline;
-	constructor(app: App, plugin: RegexPipeline) {
-		super(app);
-		this.plugin = plugin;
-		this.contentEl.className = "ruleset-creation-content"
-	}
-
-	onOpen() {
-		var nameHint = this.contentEl.createEl("h4");
-		nameHint.innerHTML = "Name";
-		this.contentEl.append(nameHint);
-		var nameInput = this.contentEl.createEl("textarea");
-		nameInput.setAttr("rows", "1");
-		nameInput.addEventListener('keydown', (e) => {
-			if (e.key === "Enter") e.preventDefault();
-		  });
-		this.contentEl.append(nameInput);
-		var contentHint = this.contentEl.createEl("h4");
-		contentHint.innerHTML = "Content";
-		this.contentEl.append(contentHint);
-		var contentInput = this.contentEl.createEl("textarea");
-		contentInput.style.setProperty("height", "300px");
-		this.contentEl.append(contentInput);
-		var saveButton = new ButtonComponent(this.contentEl)
-			.setButtonText("Save")
-			.onClick(async (evt) => {
-				if (!await this.plugin.createRuleset(nameInput.value, contentInput.value))
-				{
-					new Notice("Failed to create the ruleset! Please check if the file already exist.");
-					return
-				}
-				this.plugin.menu.onClose();
-				this.plugin.menu.onOpen();
-				this.close()
-			});
-	}
-
-	onClose() {
-		let {contentEl} = this;
-		contentEl.empty();
-	}
+    plugin: RegexPipeline;
+    constructor(app: App, plugin: RegexPipeline) {
+        super(app);
+        this.plugin = plugin;
+    }
+    onOpen() {
+        this.titleEl.setText(t('APPLY_RULESET'));
+        const grid = this.contentEl.createEl("div", { cls: "rulesets-menu-content" });
+        this.plugin.settings.rules.forEach(rule => {
+            new ButtonComponent(grid).setButtonText(rule).onClick(() => {
+                this.plugin.applyRuleset(this.plugin.pathToRulesets + "/" + rule);
+                this.close();
+            }).buttonEl.addClass("apply-ruleset-button");
+        });
+    }
+    onClose() { this.contentEl.empty(); }
 }

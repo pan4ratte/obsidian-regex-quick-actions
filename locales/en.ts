@@ -1,0 +1,21 @@
+export default {
+    PLUGIN_NAME: "Regex Pipeline",
+    PLUGIN_DESC: "A plugin for batch-processing text using sequences of regular expression rules. Create rulesets to automate complex search-and-replace workflows.",
+    MANAGE_RULESETS: "Manage Rulesets",
+    CREATE_NEW: "Create New",
+    CREATE_NEW_RULESET: "Create New Ruleset",
+    NAME: "Name",
+    RULES: "Rules",
+    SAVE: "Save",
+    UPDATE: "Update",
+    CANCEL: "Cancel",
+    APPLY_RULESET: "Apply Ruleset",
+    NAME_EXISTS_ERR: "Error: Name already exists!",
+    NOT_FOUND_ERR: " not found!",
+    EXECUTED_MSG: "Executed '{}' with {} replacements.",
+    DELETE_CONFIRM: "Delete \"{}\"?",
+    EDIT_TOOLTIP: "Edit",
+    DELETE_TOOLTIP: "Delete",
+    PLACEHOLDER_NAME: "name.txt",
+    PLACEHOLDER_RULES: '"search" -> "replace"'
+};
