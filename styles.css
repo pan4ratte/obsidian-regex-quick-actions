@@ -3,22 +3,41 @@
     margin-left: 16px;
 }
 
-/* --- Shared Layout: Creation Row & Saved Items --- */
-.orp-creation-row {
+/* --- Shared Layout Containers --- */
+.orp-creation-row,
+.orp-saved-rule-item {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    background-color: var(--setting-items-background);
+    border-radius: var(--setting-items-radius);
+    padding: 16px;
+    margin-bottom: 12px; 
+}
+
+/* Horizontal Row for Regex Fields */
+.orp-fields-row {
     display: flex;
     flex-direction: row;
     gap: 12px;
-    align-items: flex-end;
-    background-color: var(--setting-items-background);
-    border-radius: var(--setting-items-radius);
-    margin-bottom: 32px;
-    padding: 16px 16px 32px 16px;
+    width: 100%;
 }
 
 .orp-input-wrap {
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 6px;
+}
+
+/* Proportional Widths */
+.orp-pattern-field, 
+.orp-replacement-field {
+    flex: 1;
+    min-width: 0;
+}
+
+.orp-flags-field {
+    flex: 0 0 80px;
 }
 
 .orp-label {
@@ -27,45 +46,36 @@
     text-transform: uppercase;
     font-size: 0.7em;
     margin-left: 4px;
-}
-
-.orp-creation-name {
-    flex: 1;
-}
-
-.orp-creation-rules {
-    flex: 3;
+    font-family: var(--font-interface);
 }
 
 .orp-creation-actions {
-    flex: 0;
+    align-items: flex-end;
+    margin-top: 4px;
 }
 
+/* Input & Display Styling */
 .orp-input,
 .orp-saved-text-display {
     width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
     background-color: var(--background-primary);
     border: 1px solid var(--background-modifier-border);
     color: var(--text-normal);
-    border-radius: var(--input-radius, 4px);
-    height: 32px;
-    padding: var(--input-padding-y, 4px) var(--input-padding-x, 8px);
+    border-radius: var(--input-radius);
+    padding: 6px 10px;
+    font-family: var(--font-monospace);
+    min-height: 32px;
+    font-size: 0.9em;
 }
 
 .orp-saved-text-display {
     display: flex;
     align-items: center;
+    white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    white-space: nowrap;
-}
-
-.orp-font-monospace {
-    font-family: var(--font-monospace);
-}
-
-.orp-creation-rules .orp-input {
-    font-family: var(--font-monospace);
 }
 
 .orp-action-buttons {
@@ -73,26 +83,34 @@
     gap: 8px;
 }
 
+/* --- Delete Button: Red Only on Hover --- */
+.orp-action-buttons button.mod-warning {
+    color: var(--text-normal);
+    background-color: var(--interactive-normal);
+    box-shadow: none;
+}
+
+.orp-action-buttons button.mod-warning:hover {
+    background-color: var(--background-modifier-error);
+}
+
+
+/* --- Custom Modal Styling --- */
+.orp-modal-buttons {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 20px;
+}
+
 /* --- Saved List --- */
 .orp-saved-list {
-    border-radius: var(--setting-items-radius);
     margin-top: 12px;
 }
 
-.orp-saved-rule-item {
-    margin-bottom: 12px; 
-    padding-bottom: 16px; 
-}
-
-/* --- Modal --- */
+/* --- Modal Grid --- */
 .rulesets-menu-content {
     display: flex;
     flex-wrap: wrap;
     gap: 10px;
-}
-
-.apply-ruleset-button {
-    border: 1px solid var(--interactive-accent);
-    color: var(--interactive-accent);
-    border-radius: var(--button-radius, 4px);
 }
