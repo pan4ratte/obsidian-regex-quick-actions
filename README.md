@@ -4,6 +4,8 @@ This plugin allows you to create regex actions and quickly apply them in differe
 
 Regex Quick Actions is a continuation of the idea of [Regex Pipeline](https://github.com/No3371/obsidian-regex-pipeline) plugin. While the base of the code was borrowed from it, now almost every line is original. Still, cheers to them for the inspiration and for making a quick start of this project possible.
 
+![](media/plugin-demo-settings.png)
+
 
 ## Features
 
