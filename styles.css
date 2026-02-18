@@ -18,7 +18,6 @@
     margin-bottom: 12px; 
 }
 
-/* Horizontal Row for Regex Fields */
 .orp-fields-row {
     display: flex;
     flex-direction: row;
@@ -32,7 +31,6 @@
     gap: 6px;
 }
 
-/* Proportional Widths */
 .orp-pattern-field, 
 .orp-replacement-field {
     flex: 1;
@@ -45,7 +43,10 @@
 
 .orp-label {
     color: var(--text-muted);
-    font-size: 0.8em;
+    font-size: var(--font-smallest);
+    margin-left: 4px;
+    font-weight: var(--font-bold);
+    text-transform: uppercase;
 }
 
 .orp-creation-actions {
@@ -67,7 +68,6 @@
     color: var(--text-muted);
 }
 
-/* Input & Display Styling */
 .orp-input,
 .orp-saved-text-display {
     width: 100%;
@@ -81,7 +81,7 @@
     font-family: var(--font-monospace);
     min-height: 32px;
     font-size: 0.9em;
-    transition: border-color 0.2s ease;
+    transition: border-color 0.2s ease, background-color 0.2s ease;
 }
 
 .orp-saved-text-display {
@@ -92,9 +92,25 @@
     text-overflow: ellipsis;
 }
 
+.orp-saved-list {
+    margin-top: 12px;
+}
+
 .orp-action-buttons {
     display: flex;
     gap: 8px;
+}
+
+/* --- Red Delete Button on Hover --- */
+.orp-action-buttons .mod-warning {
+    background-color: var(--interactive-normal);
+    transition: all 0.2s ease;
+}
+
+.orp-action-buttons .mod-warning:hover {
+    background-color: var(--text-error) !important;
+    color: white !important;
+    border-color: var(--text-error) !important;
 }
 
 /* --- Error Animation --- */
