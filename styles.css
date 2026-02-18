@@ -1,6 +1,7 @@
 /* --- Settings Description --- */
 .orp-settings-description {
     margin-left: 16px;
+    font-size: var(--font-text-size);
 }
 
 /* --- Shared Layout Containers --- */
@@ -50,8 +51,22 @@
 }
 
 .orp-creation-actions {
-    align-items: flex-end;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
     margin-top: 4px;
+    flex-direction: row;
+}
+
+.orp-default-toggle-wrap {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.orp-toggle-label {
+    font-size: 0.85em;
+    color: var(--text-muted);
 }
 
 /* Input & Display Styling */
@@ -94,7 +109,6 @@
     background-color: var(--background-modifier-error);
 }
 
-
 /* --- Custom Modal Styling --- */
 .orp-modal-buttons {
     display: flex;
@@ -106,11 +120,4 @@
 /* --- Saved List --- */
 .orp-saved-list {
     margin-top: 12px;
-}
-
-/* --- Modal Grid --- */
-.rulesets-menu-content {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 10px;
 }
