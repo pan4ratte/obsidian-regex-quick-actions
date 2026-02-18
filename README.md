@@ -12,6 +12,7 @@ Regex Quick Actions is a continuation of the idea of [Regex Pipeline](https://gi
 	- From the command palette.
 	- From the context menu of the file in the file explorer (default action).
 	- From the context menu of the folder in the file explorer (default action, applies to all files in the folder).
+	- From the context menu of the current note.
 
 2. Set a default action for quick use.
 
