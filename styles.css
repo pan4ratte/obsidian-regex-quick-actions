@@ -45,11 +45,7 @@
 
 .orp-label {
     color: var(--text-muted);
-    font-weight: bold;
-    text-transform: uppercase;
-    font-size: 0.7em;
-    margin-left: 4px;
-    font-family: var(--font-interface);
+    font-size: 0.8em;
 }
 
 .orp-creation-actions {
@@ -85,6 +81,7 @@
     font-family: var(--font-monospace);
     min-height: 32px;
     font-size: 0.9em;
+    transition: border-color 0.2s ease;
 }
 
 .orp-saved-text-display {
@@ -100,26 +97,21 @@
     gap: 8px;
 }
 
-/* --- Delete Button: Red Only on Hover --- */
-.orp-action-buttons button.mod-warning {
-    color: var(--text-normal);
-    background-color: var(--interactive-normal);
-    box-shadow: none;
+/* --- Error Animation --- */
+.field-error {
+    animation: border-fade-out 1.5s forwards;
 }
 
-.orp-action-buttons button.mod-warning:hover {
-    background-color: var(--background-modifier-error);
-}
-
-/* --- Custom Modal Styling --- */
-.orp-modal-buttons {
-    display: flex;
-    justify-content: flex-end;
-    gap: 10px;
-    margin-top: 20px;
-}
-
-/* --- Saved List --- */
-.orp-saved-list {
-    margin-top: 12px;
+@keyframes border-fade-out {
+    0% {
+        border-color: var(--text-error);
+        box-shadow: 0 0 0 1px var(--text-error);
+    }
+    20% {
+        border-color: var(--text-error);
+    }
+    100% {
+        border-color: var(--background-modifier-border);
+        box-shadow: none;
+    }
 }

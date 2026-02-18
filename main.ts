@@ -119,38 +119,23 @@ export default class RegexQuickActions extends Plugin {
     }
 
     async createRuleset(name: string, content: string): Promise<boolean> {
-        if (this.settings.rules.includes(name)) {
-            new Notice(t('NAME_EXISTS_ERR'));
-            return false;
-        }
-
+        this.settings.rules.unshift(name);
         const path = this.pathToRulesets + "/" + name;
         await this.app.vault.adapter.write(path, content);
-        
-        this.settings.rules.push(name);
         await this.saveSettings();
         this.addRuleCommand(name);
-        
         return true;
     }
 
-    async updateRuleset(oldName: string, newName: string, content: string): Promise<boolean> {
-        if (oldName !== newName && this.settings.rules.includes(newName)) {
-            new Notice(t('NAME_EXISTS_ERR'));
-            return false;
-        }
-
+    async updateRuleset(oldName: string, newName: string, content: string): Promise<void> {
         const oldPath = this.pathToRulesets + "/" + oldName;
         const newPath = this.pathToRulesets + "/" + newName;
-        
         await this.app.vault.adapter.write(newPath, content);
-        
         if (oldName !== newName) {
             if (await this.app.vault.adapter.exists(oldPath)) {
                 await this.app.vault.adapter.remove(oldPath);
             }
             (this.app as any).commands.removeCommand(`${this.manifest.id}:${this.getCommandId(oldName)}`);
-
             const index = this.settings.rules.indexOf(oldName);
             if (index !== -1) {
                 this.settings.rules[index] = newName;
@@ -159,7 +144,6 @@ export default class RegexQuickActions extends Plugin {
                 this.addRuleCommand(newName);
             }
         }
-        return true;
     }
 
     async deleteRuleset(name: string): Promise<void> {
@@ -167,9 +151,7 @@ export default class RegexQuickActions extends Plugin {
         if (await this.app.vault.adapter.exists(path)) {
             await this.app.vault.adapter.remove(path);
         }
-        
         (this.app as any).commands.removeCommand(`${this.manifest.id}:${this.getCommandId(name)}`);
-
         this.settings.rules = this.settings.rules.filter(r => r !== name);
         if (this.settings.defaultRule === name) this.settings.defaultRule = null;
         await this.saveSettings();
@@ -178,11 +160,9 @@ export default class RegexQuickActions extends Plugin {
     async applyRulesetToFile(file: TFile, rulesetName: string) {
         const path = this.pathToRulesets + "/" + rulesetName;
         if (!await this.app.vault.adapter.exists(path)) return;
-
         const ruleText = await this.app.vault.adapter.read(path);
         const fileContent = await this.app.vault.read(file);
         const result = this.processRegex(fileContent, ruleText, rulesetName);
-        
         await this.app.vault.modify(file, result.content);
         new Notice(t('EXECUTED_MSG', rulesetName, result.count));
     }
@@ -190,12 +170,8 @@ export default class RegexQuickActions extends Plugin {
     async applyRulesetToFolder(folder: TFolder, rulesetName: string) {
         const path = this.pathToRulesets + "/" + rulesetName;
         if (!await this.app.vault.adapter.exists(path)) return;
-
         const ruleText = await this.app.vault.adapter.read(path);
-        const files = this.app.vault.getMarkdownFiles().filter(f =>
-            f.path.startsWith(folder.path + "/")
-        );
-
+        const files = this.app.vault.getMarkdownFiles().filter(f => f.path.startsWith(folder.path + "/"));
         let totalCount = 0;
         for (const file of files) {
             const fileContent = await this.app.vault.read(file);
@@ -203,7 +179,6 @@ export default class RegexQuickActions extends Plugin {
             await this.app.vault.modify(file, result.content);
             totalCount += result.count;
         }
-
         new Notice(t('EXECUTED_MSG', rulesetName, totalCount));
     }
 
@@ -212,7 +187,6 @@ export default class RegexQuickActions extends Plugin {
         let count = 0;
         let ruleMatches;
         let output = subject;
-
         while ((ruleMatches = ruleParser.exec(ruleText)) !== null) {
             const [ , pattern, flags, replacement, mode ] = ruleMatches;
             try {
@@ -231,20 +205,15 @@ export default class RegexQuickActions extends Plugin {
             new Notice(rulesetPath + t('NOT_FOUND_ERR'));
             return;
         }
-
         const ruleText = await this.app.vault.adapter.read(rulesetPath);
         const activeMarkdownView = this.app.workspace.getActiveViewOfType(MarkdownView);
         if (!activeMarkdownView) return;
-
         const editor = activeMarkdownView.editor;
         let subject = editor.somethingSelected() ? editor.getSelection() : editor.getValue();
         const pos = editor.getScrollInfo();
-        
         const result = this.processRegex(subject, ruleText, rulesetPath);
-
         if (editor.somethingSelected()) editor.replaceSelection(result.content);
         else editor.setValue(result.content);
-        
         editor.scrollTo(0, pos.top);
         new Notice(t('EXECUTED_MSG', rulesetPath.split('/').pop() || '', result.count));
     }
@@ -254,20 +223,17 @@ class ConfirmationModal extends Modal {
     constructor(app: App, private title: string, private message: string, private confirmBtnText: string, private onConfirm: () => void) {
         super(app);
     }
-
     onOpen() {
         const { contentEl } = this;
         this.titleEl.setText(this.title);
         contentEl.createEl("p", { text: this.message });
         const btnContainer = contentEl.createEl("div", { cls: "orp-modal-buttons" });
-        
         new ButtonComponent(btnContainer).setButtonText(t('CANCEL')).onClick(() => this.close());
         new ButtonComponent(btnContainer).setButtonText(this.confirmBtnText).setWarning().onClick(() => {
             this.onConfirm();
             this.close();
         });
     }
-
     onClose() { this.contentEl.empty(); }
 }
 
@@ -280,6 +246,10 @@ class RegexQuickActionsSettingsTab extends PluginSettingTab {
     tempFlags = "gm";
     tempReplacement = "";
     tempIsDefault = false;
+
+    nameInputEl: HTMLInputElement;
+    patternInputEl: HTMLInputElement;
+    flagsInputEl: HTMLInputElement;
 
     constructor(app: App, plugin: RegexQuickActions) {
         super(app, plugin);
@@ -329,21 +299,16 @@ class RegexQuickActionsSettingsTab extends PluginSettingTab {
             } else {
                 let content = "";
                 try { content = await this.plugin.app.vault.adapter.read(this.plugin.pathToRulesets + "/" + name); } catch (e) {}
-
                 const { pattern, flags, replacement } = this.parseRuleContent(content);
                 const nameWrap = itemRow.createEl("div", { cls: "orp-input-wrap orp-name-field" });
                 nameWrap.createEl("small", { text: t('NAME'), cls: "orp-label" });
                 nameWrap.createEl("div", { text: name, cls: "orp-saved-text-display" });
-
                 const fieldsRow = itemRow.createEl("div", { cls: "orp-fields-row" });
                 this.createDisplayField(fieldsRow, t('SEARCH_REGEX'), pattern, "orp-pattern-field");
                 this.createDisplayField(fieldsRow, t('FLAGS'), flags, "orp-flags-field");
                 this.createDisplayField(fieldsRow, t('REPLACEMENT'), replacement, "orp-replacement-field");
-
                 const actionsWrap = itemRow.createEl("div", { cls: "orp-input-wrap orp-creation-actions" });
-                
                 const defaultWrap = actionsWrap.createEl("div", { cls: "orp-default-toggle-wrap" });
-                
                 new ToggleComponent(defaultWrap)
                     .setValue(this.plugin.settings.defaultRule === name)
                     .onChange(async (value) => {
@@ -351,18 +316,14 @@ class RegexQuickActionsSettingsTab extends PluginSettingTab {
                         await this.plugin.saveSettings();
                         this.display();
                     });
-
                 defaultWrap.createSpan({ text: t('SET_AS_DEFAULT'), cls: "orp-toggle-label" });
-
                 const buttons = actionsWrap.createEl("div", { cls: "orp-action-buttons" });
-
                 new ButtonComponent(buttons).setButtonText(t('EDIT_TOOLTIP')).onClick(() => {
                     this.parseContentToFields(name, content);
                     this.editingRule = name;
                     this.showCreationForm = false;
                     this.display();
                 });
-
                 new ButtonComponent(buttons).setButtonText(t('DELETE_TOOLTIP')).setWarning().onClick(() => {
                     new ConfirmationModal(this.app, t('DELETE_TOOLTIP'), t('DELETE_CONFIRM', name), t('DELETE_TOOLTIP'), async () => {
                         await this.plugin.deleteRuleset(name);
@@ -382,20 +343,17 @@ class RegexQuickActionsSettingsTab extends PluginSettingTab {
     private renderFormFields(container: HTMLElement, onConfirm: () => void, isUpdate = false) {
         const nameWrap = container.createEl("div", { cls: "orp-input-wrap orp-name-field" });
         nameWrap.createEl("small", { text: t('NAME'), cls: "orp-label" });
-        const nameInput = nameWrap.createEl("input", { type: "text", value: this.tempName, placeholder: t('PLACEHOLDER_NAME'), cls: "orp-input" });
-        nameInput.addEventListener("input", (e) => this.tempName = (e.target as HTMLInputElement).value);
+        this.nameInputEl = nameWrap.createEl("input", { type: "text", value: this.tempName, placeholder: t('PLACEHOLDER_NAME'), cls: "orp-input" });
+        this.nameInputEl.addEventListener("input", (e) => this.tempName = (e.target as HTMLInputElement).value);
 
         const fieldsRow = container.createEl("div", { cls: "orp-fields-row" });
-        this.createInputField(fieldsRow, t('SEARCH_REGEX'), this.tempPattern, t('PLACEHOLDER_SEARCH'), "orp-pattern-field", (v) => this.tempPattern = v);
-        this.createInputField(fieldsRow, t('FLAGS'), this.tempFlags, t('PLACEHOLDER_FLAGS'), "orp-flags-field", (v) => this.tempFlags = v);
+        this.patternInputEl = this.createInputField(fieldsRow, t('SEARCH_REGEX'), this.tempPattern, t('PLACEHOLDER_SEARCH'), "orp-pattern-field", (v) => this.tempPattern = v);
+        this.flagsInputEl = this.createInputField(fieldsRow, t('FLAGS'), this.tempFlags, t('PLACEHOLDER_FLAGS'), "orp-flags-field", (v) => this.tempFlags = v);
         this.createInputField(fieldsRow, t('REPLACEMENT'), this.tempReplacement, t('PLACEHOLDER_REPLACEMENT'), "orp-replacement-field", (v) => this.tempReplacement = v);
 
         const actionsWrap = container.createEl("div", { cls: "orp-input-wrap orp-creation-actions" });
-
         const defaultWrap = actionsWrap.createEl("div", { cls: "orp-default-toggle-wrap" });
-        
         const initialToggleValue = isUpdate ? (this.plugin.settings.defaultRule === this.editingRule) : this.tempIsDefault;
-
         new ToggleComponent(defaultWrap)
             .setValue(initialToggleValue)
             .onChange(async (value) => {
@@ -406,9 +364,7 @@ class RegexQuickActionsSettingsTab extends PluginSettingTab {
                     this.tempIsDefault = value;
                 }
             });
-
         defaultWrap.createSpan({ text: t('SET_AS_DEFAULT'), cls: "orp-toggle-label" });
-
         const buttons = actionsWrap.createEl("div", { cls: "orp-action-buttons" });
         new ButtonComponent(buttons).setButtonText(isUpdate ? t('UPDATE') : t('SAVE')).setCta().onClick(onConfirm);
         new ButtonComponent(buttons).setButtonText(t('CANCEL')).onClick(() => {
@@ -418,60 +374,81 @@ class RegexQuickActionsSettingsTab extends PluginSettingTab {
         });
     }
 
-    private createInputField(parent: HTMLElement, label: string, val: string, ph: string, cls: string, onChange: (v: string) => void) {
+    private createInputField(parent: HTMLElement, label: string, val: string, ph: string, cls: string, onChange: (v: string) => void): HTMLInputElement {
         const wrap = parent.createEl("div", { cls: `orp-input-wrap ${cls}` });
         wrap.createEl("small", { text: label, cls: "orp-label" });
         const input = wrap.createEl("input", { type: "text", value: val, placeholder: ph, cls: "orp-input" });
         input.addEventListener("input", (e) => onChange((e.target as HTMLInputElement).value));
+        return input;
     }
 
-    private validateInputs(): boolean {
-        if (!this.tempName || this.tempName.trim() === "") {
+    private triggerFieldError(el: HTMLElement) {
+        if (!el) return;
+        el.classList.remove('field-error');
+        void el.offsetWidth;
+        el.classList.add('field-error');
+    }
+
+    private validateInputs(isUpdate = false): boolean {
+        const trimmedName = this.tempName.trim();
+        if (!trimmedName) {
             new Notice(t('NAME_EMPTY_ERR'));
+            this.triggerFieldError(this.nameInputEl);
             return false;
         }
 
-        if (!this.tempPattern || this.tempPattern.trim() === "") {
+        const nameExists = this.plugin.settings.rules.some(name => 
+            name.toLowerCase() === trimmedName.toLowerCase() && (!isUpdate || name !== this.editingRule)
+        );
+        if (nameExists) {
+            new Notice(t('NAME_EXISTS_ERR'));
+            this.triggerFieldError(this.nameInputEl);
+            return false;
+        }
+
+        if (!this.tempPattern.trim()) {
             new Notice(t('PATTERN_EMPTY_ERR'));
+            this.triggerFieldError(this.patternInputEl);
             return false;
         }
 
         try {
             new RegExp(this.tempPattern, this.tempFlags || 'gm');
         } catch (e) {
-            new Notice(t('REGEX_INVALID_ERR'));
+            // Determine if the error is likely due to the flags
+            const errorMsg = e.message.toLowerCase();
+            const isFlagError = errorMsg.includes("flag") || /[^gimsuy]/.test(this.tempFlags);
+            
+            if (isFlagError) {
+                new Notice(t('FLAGS_INVALID_ERR'));
+                this.triggerFieldError(this.flagsInputEl);
+            } else {
+                new Notice(t('REGEX_INVALID_ERR'));
+                this.triggerFieldError(this.patternInputEl);
+            }
             return false;
         }
-
         return true;
     }
 
     private async handleSave() {
-        if (!this.validateInputs()) return;
-
+        if (!this.validateInputs(false)) return;
         const content = `"${this.tempPattern}"${this.tempFlags}\n->\n"${this.tempReplacement}"`;
-        const success = await this.plugin.createRuleset(this.tempName, content);
-        
-        if (success) {
-            if (this.tempIsDefault) {
-                this.plugin.settings.defaultRule = this.tempName;
-                await this.plugin.saveSettings();
-            }
-            this.showCreationForm = false;
-            this.display();
+        await this.plugin.createRuleset(this.tempName, content);
+        if (this.tempIsDefault) {
+            this.plugin.settings.defaultRule = this.tempName;
+            await this.plugin.saveSettings();
         }
+        this.showCreationForm = false;
+        this.display();
     }
 
     private async handleUpdate(oldName: string) {
-        if (!this.validateInputs()) return;
-
+        if (!this.validateInputs(true)) return;
         const content = `"${this.tempPattern}"${this.tempFlags}\n->\n"${this.tempReplacement}"`;
-        const success = await this.plugin.updateRuleset(oldName, this.tempName, content);
-        
-        if (success) {
-            this.editingRule = null;
-            this.display();
-        }
+        await this.plugin.updateRuleset(oldName, this.tempName, content);
+        this.editingRule = null;
+        this.display();
     }
 
     private parseRuleContent(content: string) {
