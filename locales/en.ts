@@ -1,6 +1,6 @@
 export default {
     PLUGIN_NAME: "Regex Quick Actions settings",
-    PLUGIN_DESC: "This plugin allows you to create and apply Regex actions via the command palette.",
+    PLUGIN_DESC: "This plugin allows you to create and quickly apply regex actions via: the command palette (any action), the file explorer context menu (default action), the file context menu (default action). Every saved action becomes a palette command, which ensures automatisation possibilities.",
     MANAGE_RULESETS: "Manage quick actions",
     CREATE_NEW: "Add new quick action",
     CREATE_NEW_RULESET: "New quick action",
