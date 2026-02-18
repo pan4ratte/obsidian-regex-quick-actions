@@ -3,8 +3,8 @@
 	"name": "Regex Quick Actions",
 	"version": "1.0.0",
 	"minAppVersion": "0.12.19",
-	"description": "Allows to create and quickly apply Regex actions.",
+	"description": "Allows to create and quickly apply regex actions.",
 	"author": "pan4ratte",
-	"authorUrl": "github.com/pan4ratte/obsidian-regex-quick-actions",
+	"authorUrl": "github.com/pan4ratte/",
 	"isDesktopOnly": false
 }
