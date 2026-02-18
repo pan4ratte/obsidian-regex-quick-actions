@@ -119,24 +119,30 @@ export default class RegexQuickActions extends Plugin {
     }
 
     async createRuleset(name: string, content: string): Promise<boolean> {
-        const path = this.pathToRulesets + "/" + name;
-        if (await this.app.vault.adapter.exists(path)) return false;
-        
-        await this.app.vault.adapter.write(path, content);
-        if (!this.settings.rules.includes(name)) {
-            this.settings.rules.push(name);
-            await this.saveSettings();
-            this.addRuleCommand(name);
+        if (this.settings.rules.includes(name)) {
+            new Notice(t('NAME_EXISTS_ERR'));
+            return false;
         }
+
+        const path = this.pathToRulesets + "/" + name;
+        await this.app.vault.adapter.write(path, content);
+        
+        this.settings.rules.push(name);
+        await this.saveSettings();
+        this.addRuleCommand(name);
+        
         return true;
     }
 
     async updateRuleset(oldName: string, newName: string, content: string): Promise<boolean> {
+        if (oldName !== newName && this.settings.rules.includes(newName)) {
+            new Notice(t('NAME_EXISTS_ERR'));
+            return false;
+        }
+
         const oldPath = this.pathToRulesets + "/" + oldName;
         const newPath = this.pathToRulesets + "/" + newName;
         
-        if (oldName !== newName && await this.app.vault.adapter.exists(newPath)) return false;
-
         await this.app.vault.adapter.write(newPath, content);
         
         if (oldName !== newName) {
@@ -273,7 +279,7 @@ class RegexQuickActionsSettingsTab extends PluginSettingTab {
     tempPattern = "";
     tempFlags = "gm";
     tempReplacement = "";
-    tempIsDefault = false; // Track default state for new rules
+    tempIsDefault = false;
 
     constructor(app: App, plugin: RegexQuickActions) {
         super(app, plugin);
@@ -386,7 +392,6 @@ class RegexQuickActionsSettingsTab extends PluginSettingTab {
 
         const actionsWrap = container.createEl("div", { cls: "orp-input-wrap orp-creation-actions" });
 
-        // Replication of Default Toggle in Creation Form
         const defaultWrap = actionsWrap.createEl("div", { cls: "orp-default-toggle-wrap" });
         
         const initialToggleValue = isUpdate ? (this.plugin.settings.defaultRule === this.editingRule) : this.tempIsDefault;
@@ -420,24 +425,53 @@ class RegexQuickActionsSettingsTab extends PluginSettingTab {
         input.addEventListener("input", (e) => onChange((e.target as HTMLInputElement).value));
     }
 
+    private validateInputs(): boolean {
+        if (!this.tempName || this.tempName.trim() === "") {
+            new Notice(t('NAME_EMPTY_ERR'));
+            return false;
+        }
+
+        if (!this.tempPattern || this.tempPattern.trim() === "") {
+            new Notice(t('PATTERN_EMPTY_ERR'));
+            return false;
+        }
+
+        try {
+            new RegExp(this.tempPattern, this.tempFlags || 'gm');
+        } catch (e) {
+            new Notice(t('REGEX_INVALID_ERR'));
+            return false;
+        }
+
+        return true;
+    }
+
     private async handleSave() {
+        if (!this.validateInputs()) return;
+
         const content = `"${this.tempPattern}"${this.tempFlags}\n->\n"${this.tempReplacement}"`;
-        if (await this.plugin.createRuleset(this.tempName, content)) {
+        const success = await this.plugin.createRuleset(this.tempName, content);
+        
+        if (success) {
             if (this.tempIsDefault) {
                 this.plugin.settings.defaultRule = this.tempName;
                 await this.plugin.saveSettings();
             }
             this.showCreationForm = false;
             this.display();
-        } else new Notice(t('NAME_EXISTS_ERR'));
+        }
     }
 
     private async handleUpdate(oldName: string) {
+        if (!this.validateInputs()) return;
+
         const content = `"${this.tempPattern}"${this.tempFlags}\n->\n"${this.tempReplacement}"`;
-        if (await this.plugin.updateRuleset(oldName, this.tempName, content)) {
+        const success = await this.plugin.updateRuleset(oldName, this.tempName, content);
+        
+        if (success) {
             this.editingRule = null;
             this.display();
-        } else new Notice(t('NAME_EXISTS_ERR'));
+        }
     }
 
     private parseRuleContent(content: string) {
