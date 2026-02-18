@@ -227,6 +227,7 @@ class RegexQuickActionsSettingsTab extends PluginSettingTab {
     tempPattern = "";
     tempFlags = "gm";
     tempReplacement = "";
+    tempIsDefault = false; // Track default state for new rules
 
     constructor(app: App, plugin: RegexQuickActions) {
         super(app, plugin);
@@ -277,10 +278,9 @@ class RegexQuickActionsSettingsTab extends PluginSettingTab {
 
                 const actionsWrap = itemRow.createEl("div", { cls: "orp-input-wrap orp-creation-actions" });
                 
-                // Toggle instead of Checkbox
                 const defaultWrap = actionsWrap.createEl("div", { cls: "orp-default-toggle-wrap" });
                 
-                const toggle = new ToggleComponent(defaultWrap)
+                new ToggleComponent(defaultWrap)
                     .setValue(this.plugin.settings.defaultRule === name)
                     .onChange(async (value) => {
                         this.plugin.settings.defaultRule = value ? name : null;
@@ -327,6 +327,25 @@ class RegexQuickActionsSettingsTab extends PluginSettingTab {
         this.createInputField(fieldsRow, t('REPLACEMENT'), this.tempReplacement, t('PLACEHOLDER_REPLACEMENT'), "orp-replacement-field", (v) => this.tempReplacement = v);
 
         const actionsWrap = container.createEl("div", { cls: "orp-input-wrap orp-creation-actions" });
+
+        // Replication of Default Toggle in Creation Form
+        const defaultWrap = actionsWrap.createEl("div", { cls: "orp-default-toggle-wrap" });
+        
+        const initialToggleValue = isUpdate ? (this.plugin.settings.defaultRule === this.editingRule) : this.tempIsDefault;
+
+        new ToggleComponent(defaultWrap)
+            .setValue(initialToggleValue)
+            .onChange(async (value) => {
+                if (isUpdate) {
+                    this.plugin.settings.defaultRule = value ? this.tempName : null;
+                    await this.plugin.saveSettings();
+                } else {
+                    this.tempIsDefault = value;
+                }
+            });
+
+        defaultWrap.createSpan({ text: t('SET_AS_DEFAULT'), cls: "orp-toggle-label" });
+
         const buttons = actionsWrap.createEl("div", { cls: "orp-action-buttons" });
         new ButtonComponent(buttons).setButtonText(isUpdate ? t('UPDATE') : t('SAVE')).setCta().onClick(onConfirm);
         new ButtonComponent(buttons).setButtonText(t('CANCEL')).onClick(() => {
@@ -346,6 +365,10 @@ class RegexQuickActionsSettingsTab extends PluginSettingTab {
     private async handleSave() {
         const content = `"${this.tempPattern}"${this.tempFlags}\n->\n"${this.tempReplacement}"`;
         if (await this.plugin.createRuleset(this.tempName, content)) {
+            if (this.tempIsDefault) {
+                this.plugin.settings.defaultRule = this.tempName;
+                await this.plugin.saveSettings();
+            }
             this.showCreationForm = false;
             this.display();
         } else new Notice(t('NAME_EXISTS_ERR'));
@@ -382,6 +405,7 @@ class RegexQuickActionsSettingsTab extends PluginSettingTab {
         this.tempPattern = "";
         this.tempFlags = "gm";
         this.tempReplacement = "";
+        this.tempIsDefault = false;
         this.editingRule = null;
     }
 }
