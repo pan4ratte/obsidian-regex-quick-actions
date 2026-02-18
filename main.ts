@@ -31,7 +31,7 @@ export default class RegexQuickActions extends Plugin {
                 if (file instanceof TFile && this.settings.defaultRule) {
                     menu.addItem((item) => {
                         item
-                            .setTitle(t('PERFORM_DEFAULT'))
+                            .setTitle(t('RUN_DEFAULT'))
                             .setIcon("play")
                             .onClick(async () => {
                                 await this.applyRulesetToFile(file, this.settings.defaultRule!);
@@ -42,7 +42,7 @@ export default class RegexQuickActions extends Plugin {
                 if (file instanceof TFolder && this.settings.defaultRule) {
                     menu.addItem((item) => {
                         item
-                            .setTitle(t('PERFORM_DEFAULT_ON_FOLDER'))
+                            .setTitle(t('RUN_DEFAULT_ON_FOLDER'))
                             .setIcon("play")
                             .onClick(() => {
                                 const run = async () => {
@@ -53,7 +53,7 @@ export default class RegexQuickActions extends Plugin {
                                         this.app,
                                         t('FOLDER_ACTION_CONFIRM_TITLE'),
                                         t('FOLDER_ACTION_CONFIRM_MSG'),
-                                        t('FOLDER_ACTION_CONFIRM_BTN'),
+                                        t('YES'),
                                         run
                                     ).open();
                                 } else {
@@ -70,7 +70,7 @@ export default class RegexQuickActions extends Plugin {
                 if (this.settings.defaultRule) {
                     menu.addItem((item) => {
                         item
-                            .setTitle(t('PERFORM_DEFAULT'))
+                            .setTitle(t('RUN_DEFAULT'))
                             .setIcon("play")
                             .onClick(async () => {
                                 await this.applyRuleset(this.pathToRulesets + "/" + this.settings.defaultRule);
@@ -259,9 +259,9 @@ class RegexQuickActionsSettingsTab extends PluginSettingTab {
     display() {
         const { containerEl } = this;
         containerEl.empty();
-        containerEl.createEl("h2", { text: t('PLUGIN_NAME') });
+        containerEl.createEl("h2", { text: t('PLUGIN_SETTINGS_HEADER') });
         containerEl.createEl("p", { text: t('PLUGIN_DESC'), cls: "orp-settings-description" });
-        containerEl.createEl("h2", { text: t('GENERAL_SECTION') });
+        containerEl.createEl("h2", { text: t('GENERAL_SECTION_HEADER') });
 
         new Setting(containerEl)
             .setName(t('CONFIRM_FOLDER_ACTION'))
@@ -273,12 +273,12 @@ class RegexQuickActionsSettingsTab extends PluginSettingTab {
                     await this.plugin.saveSettings();
                 }));
 
-        containerEl.createEl("h2", { text: t('MANAGE_RULESETS') });
+        containerEl.createEl("h2", { text: t('MANAGE_SECTION_HEADER') });
 
         new Setting(containerEl)
-            .setName(t('CREATE_NEW_RULESET'))
+            .setName(t('ADD_QUICK_ACTION'))
             .addButton(btn => btn
-                .setButtonText(t('CREATE_NEW'))
+                .setButtonText(t('ADD'))
                 .setCta()
                 .onClick(() => {
                     this.resetTempFields();
@@ -301,7 +301,7 @@ class RegexQuickActionsSettingsTab extends PluginSettingTab {
                 try { content = await this.plugin.app.vault.adapter.read(this.plugin.pathToRulesets + "/" + name); } catch (e) {}
                 const { pattern, flags, replacement } = this.parseRuleContent(content);
                 const nameWrap = itemRow.createEl("div", { cls: "orp-input-wrap orp-name-field" });
-                nameWrap.createEl("small", { text: t('NAME'), cls: "orp-label" });
+                nameWrap.createEl("small", { text: t('ACTION_NAME'), cls: "orp-label" });
                 nameWrap.createEl("div", { text: name, cls: "orp-saved-text-display" });
                 const fieldsRow = itemRow.createEl("div", { cls: "orp-fields-row" });
                 this.createDisplayField(fieldsRow, t('SEARCH_REGEX'), pattern, "orp-pattern-field");
@@ -318,14 +318,14 @@ class RegexQuickActionsSettingsTab extends PluginSettingTab {
                     });
                 defaultWrap.createSpan({ text: t('SET_AS_DEFAULT'), cls: "orp-toggle-label" });
                 const buttons = actionsWrap.createEl("div", { cls: "orp-action-buttons" });
-                new ButtonComponent(buttons).setButtonText(t('EDIT_TOOLTIP')).onClick(() => {
+                new ButtonComponent(buttons).setButtonText(t('EDIT')).onClick(() => {
                     this.parseContentToFields(name, content);
                     this.editingRule = name;
                     this.showCreationForm = false;
                     this.display();
                 });
-                new ButtonComponent(buttons).setButtonText(t('DELETE_TOOLTIP')).setWarning().onClick(() => {
-                    new ConfirmationModal(this.app, t('DELETE_TOOLTIP'), t('DELETE_CONFIRM', name), t('DELETE_TOOLTIP'), async () => {
+                new ButtonComponent(buttons).setButtonText(t('DELETE')).setWarning().onClick(() => {
+                    new ConfirmationModal(this.app, t('DELETE_HEADER'), t('DELETE_CONFIRM', name), t('YES'), async () => {
                         await this.plugin.deleteRuleset(name);
                         this.display();
                     }).open();
@@ -342,7 +342,7 @@ class RegexQuickActionsSettingsTab extends PluginSettingTab {
 
     private renderFormFields(container: HTMLElement, onConfirm: () => void, isUpdate = false) {
         const nameWrap = container.createEl("div", { cls: "orp-input-wrap orp-name-field" });
-        nameWrap.createEl("small", { text: t('NAME'), cls: "orp-label" });
+        nameWrap.createEl("small", { text: t('ACTION_NAME'), cls: "orp-label" });
         this.nameInputEl = nameWrap.createEl("input", { type: "text", value: this.tempName, placeholder: t('PLACEHOLDER_NAME'), cls: "orp-input" });
         this.nameInputEl.addEventListener("input", (e) => this.tempName = (e.target as HTMLInputElement).value);
 
@@ -366,7 +366,7 @@ class RegexQuickActionsSettingsTab extends PluginSettingTab {
             });
         defaultWrap.createSpan({ text: t('SET_AS_DEFAULT'), cls: "orp-toggle-label" });
         const buttons = actionsWrap.createEl("div", { cls: "orp-action-buttons" });
-        new ButtonComponent(buttons).setButtonText(isUpdate ? t('UPDATE') : t('SAVE')).setCta().onClick(onConfirm);
+        new ButtonComponent(buttons).setButtonText(isUpdate ? t('SAVE') : t('SAVE')).setCta().onClick(onConfirm);
         new ButtonComponent(buttons).setButtonText(t('CANCEL')).onClick(() => {
             this.editingRule = null;
             this.showCreationForm = false;

@@ -131,3 +131,9 @@
         box-shadow: none;
     }
 }
+
+.orp-modal-buttons {
+    display: flex;
+    flex-direction: row-reverse;
+    gap: 8px;
+}
