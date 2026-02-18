@@ -1,7 +1,7 @@
 {
   "name": "obsidian-regex-quick-actions",
-  "version": "1.0.0",
-  "description": "Allows to create and quickly apply Regex actions.",
+  "version": "1.0.1",
+  "description": "Create and quickly apply regex actions via command palette and context menus.",
   "main": "main.js",
   "scripts": {
     "dev": "rollup --config rollup.config.js -w",
