@@ -6,7 +6,7 @@ export default {
     GENERAL_SECTION_HEADER: "General",
     PLUGIN_DESC: "This plugin allows you to create and quickly apply regex actions via: the command palette (any action), the file explorer context menu (default action), the file context menu (default action). Every saved action becomes a palette command, which ensures automatisation possibilities.",
     
-    /* Generic buttons, use when needed */
+    /* Generic buttons */
     
     ADD: "Add",
     SAVE: "Save",
@@ -15,11 +15,11 @@ export default {
     EDIT: "Edit",
     DELETE: "Delete",
     
-    /* Dialogs */
+    /* Dialog texts */
 
     DELETE_HEADER: "Delete quick action",
     DELETE_CONFIRM: "Are you sure you want to delete quick action \"{}\"?",
-    FOLDER_ACTION_CONFIRM_TITLE: "Confirm action",
+    FOLDER_ACTION_CONFIRM_TITLE: "Run quick action on folder",
     FOLDER_ACTION_CONFIRM_MSG: "Are you sure that you want to run default quick action on every file inside this folder? This action is irreversible.",
 
     /* Descriptions */
