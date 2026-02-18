@@ -1,14 +1,16 @@
-import { App, ButtonComponent, MarkdownView, Modal, Notice, Plugin, PluginSettingTab, Setting, Menu, TFile, TAbstractFile, ToggleComponent } from 'obsidian';
+import { App, ButtonComponent, MarkdownView, Modal, Notice, Plugin, PluginSettingTab, Setting, Menu, TFile, TFolder, TAbstractFile, ToggleComponent } from 'obsidian';
 import { t } from './i18n';
 
 interface RegexQuickActionsSettings {
     rules: string[];
     defaultRule: string | null;
+    confirmFolderAction: boolean;
 }
 
 const DEFAULT_SETTINGS: RegexQuickActionsSettings = {
     rules: [],
-    defaultRule: null
+    defaultRule: null,
+    confirmFolderAction: true
 }
 
 export default class RegexQuickActions extends Plugin {
@@ -33,6 +35,30 @@ export default class RegexQuickActions extends Plugin {
                             .setIcon("play")
                             .onClick(async () => {
                                 await this.applyRulesetToFile(file, this.settings.defaultRule!);
+                            });
+                    });
+                }
+
+                if (file instanceof TFolder && this.settings.defaultRule) {
+                    menu.addItem((item) => {
+                        item
+                            .setTitle(t('PERFORM_DEFAULT_ON_FOLDER'))
+                            .setIcon("play")
+                            .onClick(() => {
+                                const run = async () => {
+                                    await this.applyRulesetToFolder(file, this.settings.defaultRule!);
+                                };
+                                if (this.settings.confirmFolderAction) {
+                                    new ConfirmationModal(
+                                        this.app,
+                                        t('FOLDER_ACTION_CONFIRM_TITLE'),
+                                        t('FOLDER_ACTION_CONFIRM_MSG'),
+                                        t('FOLDER_ACTION_CONFIRM_BTN'),
+                                        run
+                                    ).open();
+                                } else {
+                                    run();
+                                }
                             });
                     });
                 }
@@ -155,6 +181,26 @@ export default class RegexQuickActions extends Plugin {
         new Notice(t('EXECUTED_MSG', rulesetName, result.count));
     }
 
+    async applyRulesetToFolder(folder: TFolder, rulesetName: string) {
+        const path = this.pathToRulesets + "/" + rulesetName;
+        if (!await this.app.vault.adapter.exists(path)) return;
+
+        const ruleText = await this.app.vault.adapter.read(path);
+        const files = this.app.vault.getMarkdownFiles().filter(f =>
+            f.path.startsWith(folder.path + "/")
+        );
+
+        let totalCount = 0;
+        for (const file of files) {
+            const fileContent = await this.app.vault.read(file);
+            const result = this.processRegex(fileContent, ruleText, rulesetName);
+            await this.app.vault.modify(file, result.content);
+            totalCount += result.count;
+        }
+
+        new Notice(t('EXECUTED_MSG', rulesetName, totalCount));
+    }
+
     private processRegex(subject: string, ruleText: string, rulesetName: string): { content: string, count: number } {
         const ruleParser = /^"(.+?)"([a-z]*?)(?:\r\n|\r|\n)?->(?:\r\n|\r|\n)?"(.*?)"([a-z]*?)(?:\r\n|\r|\n)?$/gmus;
         let count = 0;
@@ -199,7 +245,7 @@ export default class RegexQuickActions extends Plugin {
 }
 
 class ConfirmationModal extends Modal {
-    constructor(app: App, private title: string, private message: string, private onConfirm: () => void) {
+    constructor(app: App, private title: string, private message: string, private confirmBtnText: string, private onConfirm: () => void) {
         super(app);
     }
 
@@ -210,7 +256,7 @@ class ConfirmationModal extends Modal {
         const btnContainer = contentEl.createEl("div", { cls: "orp-modal-buttons" });
         
         new ButtonComponent(btnContainer).setButtonText(t('CANCEL')).onClick(() => this.close());
-        new ButtonComponent(btnContainer).setButtonText(t('DELETE_TOOLTIP')).setWarning().onClick(() => {
+        new ButtonComponent(btnContainer).setButtonText(this.confirmBtnText).setWarning().onClick(() => {
             this.onConfirm();
             this.close();
         });
@@ -239,6 +285,18 @@ class RegexQuickActionsSettingsTab extends PluginSettingTab {
         containerEl.empty();
         containerEl.createEl("h2", { text: t('PLUGIN_NAME') });
         containerEl.createEl("p", { text: t('PLUGIN_DESC'), cls: "orp-settings-description" });
+        containerEl.createEl("h2", { text: t('GENERAL_SECTION') });
+
+        new Setting(containerEl)
+            .setName(t('CONFIRM_FOLDER_ACTION'))
+            .setDesc(t('CONFIRM_FOLDER_ACTION_DESC'))
+            .addToggle(toggle => toggle
+                .setValue(this.plugin.settings.confirmFolderAction)
+                .onChange(async (value) => {
+                    this.plugin.settings.confirmFolderAction = value;
+                    await this.plugin.saveSettings();
+                }));
+
         containerEl.createEl("h2", { text: t('MANAGE_RULESETS') });
 
         new Setting(containerEl)
@@ -300,7 +358,7 @@ class RegexQuickActionsSettingsTab extends PluginSettingTab {
                 });
 
                 new ButtonComponent(buttons).setButtonText(t('DELETE_TOOLTIP')).setWarning().onClick(() => {
-                    new ConfirmationModal(this.app, t('DELETE_TOOLTIP'), t('DELETE_CONFIRM', name), async () => {
+                    new ConfirmationModal(this.app, t('DELETE_TOOLTIP'), t('DELETE_CONFIRM', name), t('DELETE_TOOLTIP'), async () => {
                         await this.plugin.deleteRuleset(name);
                         this.display();
                     }).open();
