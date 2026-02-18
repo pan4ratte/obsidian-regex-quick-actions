@@ -22,12 +22,12 @@ export default {
     PLACEHOLDER_FLAGS: "e.g. gm",
     PLACEHOLDER_REPLACEMENT: "Replacement text",
     SET_AS_DEFAULT: "Set as default quick action",
-    PERFORM_DEFAULT: "Perform default quick action",
-    PERFORM_DEFAULT_ON_FOLDER: "Perform default quick action on folder",
+    PERFORM_DEFAULT: "Run default quick action",
+    PERFORM_DEFAULT_ON_FOLDER: "Run default quick action on folder",
     FOLDER_ACTION_CONFIRM_TITLE: "Confirm action",
     FOLDER_ACTION_CONFIRM_MSG: "Are you sure that you want to perform default quick action on every file inside this folder? This action is irreversible.",
-    FOLDER_ACTION_CONFIRM_BTN: "Yes, proceed",
+    FOLDER_ACTION_CONFIRM_BTN: "Yes",
     GENERAL_SECTION: "General",
-    CONFIRM_FOLDER_ACTION: "Confirm folder quick action",
-    CONFIRM_FOLDER_ACTION_DESC: "Show a confirmation dialog before performing the default quick action on every file inside a folder.",
+    CONFIRM_FOLDER_ACTION: "Confirmation for quick action on folder",
+    CONFIRM_FOLDER_ACTION_DESC: "Show a confirmation dialog before running quick action on every file inside a chosen folder."
 };
