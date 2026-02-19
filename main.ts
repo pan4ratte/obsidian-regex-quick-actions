@@ -337,8 +337,8 @@ class RegexQuickActionsSettingsTab extends PluginSettingTab {
                 this.renderFormFields(itemRow, () => this.handleUpdate(name), true);
             } else {
                 let content = "";
-                // FIXED: catch variable removed as it was unused
-                try { content = await this.plugin.app.vault.adapter.read(this.plugin.pathToRulesets + "/" + name); } catch { }
+                // FIXED: added comment to empty catch block to satisfy no-empty linter rule
+                try { content = await this.plugin.app.vault.adapter.read(this.plugin.pathToRulesets + "/" + name); } catch { /* ignore if file doesn't exist */ }
                 const { pattern, flags, replacement } = this.parseRuleContent(content);
                 const nameWrap = itemRow.createEl("div", { cls: "orp-input-wrap orp-name-field" });
                 nameWrap.createEl("small", { text: t('ACTION_NAME'), cls: "orp-label" });
