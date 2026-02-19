@@ -157,29 +157,61 @@ export default class RegexQuickActions extends Plugin {
         await this.saveSettings();
     }
 
+    /**
+     * Modified to use a helper that prioritizes the Editor API for the active file.
+     */
     async applyRulesetToFile(file: TFile, rulesetName: string) {
         const path = this.pathToRulesets + "/" + rulesetName;
         if (!await this.app.vault.adapter.exists(path)) return;
         const ruleText = await this.app.vault.adapter.read(path);
-        const fileContent = await this.app.vault.read(file);
-        const result = this.processRegex(fileContent, ruleText, rulesetName);
-        await this.app.vault.modify(file, result.content);
-        new Notice(t('EXECUTED_MSG', rulesetName, result.count));
+        
+        const count = await this.modifyFile(file, ruleText, rulesetName);
+        new Notice(t('EXECUTED_MSG', rulesetName, count));
     }
 
+    /**
+     * Modified to use a helper that prioritizes the Editor API if a file in the folder is active.
+     */
     async applyRulesetToFolder(folder: TFolder, rulesetName: string) {
         const path = this.pathToRulesets + "/" + rulesetName;
         if (!await this.app.vault.adapter.exists(path)) return;
         const ruleText = await this.app.vault.adapter.read(path);
         const files = this.app.vault.getMarkdownFiles().filter(f => f.path.startsWith(folder.path + "/"));
+        
         let totalCount = 0;
         for (const file of files) {
+            totalCount += await this.modifyFile(file, ruleText, rulesetName);
+        }
+        new Notice(t('EXECUTED_MSG', rulesetName, totalCount));
+    }
+
+    /**
+     * Helper method to modify file content. 
+     * Prioritizes Editor API for the active file, otherwise falls back to Vault API.
+     */
+    private async modifyFile(file: TFile, ruleText: string, rulesetName: string): Promise<number> {
+        const activeView = this.app.workspace.getActiveViewOfType(MarkdownView);
+        
+        // If the file is currently active in the editor, use Editor API
+        if (activeView && activeView.file?.path === file.path) {
+            const editor = activeView.editor;
+            const scroll = editor.getScrollInfo();
+            const cursor = editor.getCursor();
+            
+            const result = this.processRegex(editor.getValue(), ruleText, rulesetName);
+            editor.setValue(result.content);
+            
+            // Restore context
+            editor.setCursor(cursor);
+            editor.scrollTo(0, scroll.top);
+            return result.count;
+        } else {
+            // Fallback to Vault API for inactive files
             const fileContent = await this.app.vault.read(file);
             const result = this.processRegex(fileContent, ruleText, rulesetName);
             await this.app.vault.modify(file, result.content);
-            totalCount += result.count;
+            return result.count;
         }
-        new Notice(t('EXECUTED_MSG', rulesetName, totalCount));
     }
 
     private processRegex(subject: string, ruleText: string, rulesetName: string): { content: string, count: number } {
@@ -259,9 +291,16 @@ class RegexQuickActionsSettingsTab extends PluginSettingTab {
     display() {
         const { containerEl } = this;
         containerEl.empty();
-        containerEl.createEl("h2", { text: t('PLUGIN_SETTINGS_HEADER') });
+
+        new Setting(containerEl)
+            .setHeading()
+            .setName(t('PLUGIN_SETTINGS_HEADER'));
+
         containerEl.createEl("p", { text: t('PLUGIN_DESC'), cls: "orp-settings-description" });
-        containerEl.createEl("h2", { text: t('GENERAL_SECTION_HEADER') });
+
+        new Setting(containerEl)
+            .setHeading()
+            .setName(t('GENERAL_SECTION_HEADER'));
 
         new Setting(containerEl)
             .setName(t('CONFIRM_FOLDER_ACTION'))
@@ -273,7 +312,9 @@ class RegexQuickActionsSettingsTab extends PluginSettingTab {
                     await this.plugin.saveSettings();
                 }));
 
-        containerEl.createEl("h2", { text: t('MANAGE_SECTION_HEADER') });
+        new Setting(containerEl)
+            .setHeading()
+            .setName(t('MANAGE_SECTION_HEADER'));
 
         new Setting(containerEl)
             .setName(t('ADD_QUICK_ACTION'))
@@ -415,7 +456,6 @@ class RegexQuickActionsSettingsTab extends PluginSettingTab {
         try {
             new RegExp(this.tempPattern, this.tempFlags || 'gm');
         } catch (e) {
-            // Determine if the error is likely due to the flags
             const errorMsg = e.message.toLowerCase();
             const isFlagError = errorMsg.includes("flag") || /[^gimsuy]/.test(this.tempFlags);
             
