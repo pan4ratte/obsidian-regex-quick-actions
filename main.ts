@@ -1,6 +1,15 @@
 import { App, ButtonComponent, MarkdownView, Modal, Notice, Plugin, PluginSettingTab, Setting, Menu, TFile, TFolder, TAbstractFile, ToggleComponent } from 'obsidian';
 import { t } from './i18n';
 
+/**
+ * Interface to access internal Obsidian command registry
+ */
+interface CommandApp extends App {
+    commands: {
+        removeCommand(id: string): void;
+    };
+}
+
 interface RegexQuickActionsSettings {
     rules: string[];
     defaultRule: string | null;
@@ -135,7 +144,8 @@ export default class RegexQuickActions extends Plugin {
             if (await this.app.vault.adapter.exists(oldPath)) {
                 await this.app.vault.adapter.remove(oldPath);
             }
-            (this.app as any).commands.removeCommand(`${this.manifest.id}:${this.getCommandId(oldName)}`);
+            // Use CommandApp interface to remove command
+            (this.app as CommandApp).commands.removeCommand(`${this.manifest.id}:${this.getCommandId(oldName)}`);
             const index = this.settings.rules.indexOf(oldName);
             if (index !== -1) {
                 this.settings.rules[index] = newName;
@@ -151,15 +161,13 @@ export default class RegexQuickActions extends Plugin {
         if (await this.app.vault.adapter.exists(path)) {
             await this.app.vault.adapter.remove(path);
         }
-        (this.app as any).commands.removeCommand(`${this.manifest.id}:${this.getCommandId(name)}`);
+        // Use CommandApp interface to remove command
+        (this.app as CommandApp).commands.removeCommand(`${this.manifest.id}:${this.getCommandId(name)}`);
         this.settings.rules = this.settings.rules.filter(r => r !== name);
         if (this.settings.defaultRule === name) this.settings.defaultRule = null;
         await this.saveSettings();
     }
 
-    /**
-     * Modified to use a helper that prioritizes the Editor API for the active file.
-     */
     async applyRulesetToFile(file: TFile, rulesetName: string) {
         const path = this.pathToRulesets + "/" + rulesetName;
         if (!await this.app.vault.adapter.exists(path)) return;
@@ -169,9 +177,6 @@ export default class RegexQuickActions extends Plugin {
         new Notice(t('EXECUTED_MSG', rulesetName, count));
     }
 
-    /**
-     * Modified to use a helper that prioritizes the Editor API if a file in the folder is active.
-     */
     async applyRulesetToFolder(folder: TFolder, rulesetName: string) {
         const path = this.pathToRulesets + "/" + rulesetName;
         if (!await this.app.vault.adapter.exists(path)) return;
@@ -185,14 +190,9 @@ export default class RegexQuickActions extends Plugin {
         new Notice(t('EXECUTED_MSG', rulesetName, totalCount));
     }
 
-    /**
-     * Helper method to modify file content. 
-     * Prioritizes Editor API for the active file, otherwise falls back to Vault API.
-     */
     private async modifyFile(file: TFile, ruleText: string, rulesetName: string): Promise<number> {
         const activeView = this.app.workspace.getActiveViewOfType(MarkdownView);
         
-        // If the file is currently active in the editor, use Editor API
         if (activeView && activeView.file?.path === file.path) {
             const editor = activeView.editor;
             const scroll = editor.getScrollInfo();
@@ -201,12 +201,10 @@ export default class RegexQuickActions extends Plugin {
             const result = this.processRegex(editor.getValue(), ruleText, rulesetName);
             editor.setValue(result.content);
             
-            // Restore context
             editor.setCursor(cursor);
             editor.scrollTo(0, scroll.top);
             return result.count;
         } else {
-            // Fallback to Vault API for inactive files
             const fileContent = await this.app.vault.read(file);
             const result = this.processRegex(fileContent, ruleText, rulesetName);
             await this.app.vault.modify(file, result.content);
@@ -241,7 +239,10 @@ export default class RegexQuickActions extends Plugin {
         const activeMarkdownView = this.app.workspace.getActiveViewOfType(MarkdownView);
         if (!activeMarkdownView) return;
         const editor = activeMarkdownView.editor;
-        let subject = editor.somethingSelected() ? editor.getSelection() : editor.getValue();
+        
+        // FIXED: subject is now const
+        const subject = editor.somethingSelected() ? editor.getSelection() : editor.getValue();
+        
         const pos = editor.getScrollInfo();
         const result = this.processRegex(subject, ruleText, rulesetPath);
         if (editor.somethingSelected()) editor.replaceSelection(result.content);
@@ -407,7 +408,7 @@ class RegexQuickActionsSettingsTab extends PluginSettingTab {
             });
         defaultWrap.createSpan({ text: t('SET_AS_DEFAULT'), cls: "orp-toggle-label" });
         const buttons = actionsWrap.createEl("div", { cls: "orp-action-buttons" });
-        new ButtonComponent(buttons).setButtonText(isUpdate ? t('SAVE') : t('SAVE')).setCta().onClick(onConfirm);
+        new ButtonComponent(buttons).setButtonText(t('SAVE')).setCta().onClick(onConfirm);
         new ButtonComponent(buttons).setButtonText(t('CANCEL')).onClick(() => {
             this.editingRule = null;
             this.showCreationForm = false;
@@ -456,7 +457,7 @@ class RegexQuickActionsSettingsTab extends PluginSettingTab {
         try {
             new RegExp(this.tempPattern, this.tempFlags || 'gm');
         } catch (e) {
-            const errorMsg = e.message.toLowerCase();
+            const errorMsg = e instanceof Error ? e.message.toLowerCase() : String(e).toLowerCase();
             const isFlagError = errorMsg.includes("flag") || /[^gimsuy]/.test(this.tempFlags);
             
             if (isFlagError) {
