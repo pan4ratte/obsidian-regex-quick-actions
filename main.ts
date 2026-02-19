@@ -144,7 +144,6 @@ export default class RegexQuickActions extends Plugin {
             if (await this.app.vault.adapter.exists(oldPath)) {
                 await this.app.vault.adapter.remove(oldPath);
             }
-            // Use CommandApp interface to remove command
             (this.app as CommandApp).commands.removeCommand(`${this.manifest.id}:${this.getCommandId(oldName)}`);
             const index = this.settings.rules.indexOf(oldName);
             if (index !== -1) {
@@ -161,7 +160,6 @@ export default class RegexQuickActions extends Plugin {
         if (await this.app.vault.adapter.exists(path)) {
             await this.app.vault.adapter.remove(path);
         }
-        // Use CommandApp interface to remove command
         (this.app as CommandApp).commands.removeCommand(`${this.manifest.id}:${this.getCommandId(name)}`);
         this.settings.rules = this.settings.rules.filter(r => r !== name);
         if (this.settings.defaultRule === name) this.settings.defaultRule = null;
@@ -240,7 +238,6 @@ export default class RegexQuickActions extends Plugin {
         if (!activeMarkdownView) return;
         const editor = activeMarkdownView.editor;
         
-        // FIXED: subject is now const
         const subject = editor.somethingSelected() ? editor.getSelection() : editor.getValue();
         
         const pos = editor.getScrollInfo();
@@ -340,7 +337,8 @@ class RegexQuickActionsSettingsTab extends PluginSettingTab {
                 this.renderFormFields(itemRow, () => this.handleUpdate(name), true);
             } else {
                 let content = "";
-                try { content = await this.plugin.app.vault.adapter.read(this.plugin.pathToRulesets + "/" + name); } catch (e) {}
+                // FIXED: catch variable removed as it was unused
+                try { content = await this.plugin.app.vault.adapter.read(this.plugin.pathToRulesets + "/" + name); } catch { }
                 const { pattern, flags, replacement } = this.parseRuleContent(content);
                 const nameWrap = itemRow.createEl("div", { cls: "orp-input-wrap orp-name-field" });
                 nameWrap.createEl("small", { text: t('ACTION_NAME'), cls: "orp-label" });
@@ -408,7 +406,7 @@ class RegexQuickActionsSettingsTab extends PluginSettingTab {
             });
         defaultWrap.createSpan({ text: t('SET_AS_DEFAULT'), cls: "orp-toggle-label" });
         const buttons = actionsWrap.createEl("div", { cls: "orp-action-buttons" });
-        new ButtonComponent(buttons).setButtonText(t('SAVE')).setCta().onClick(onConfirm);
+        new ButtonComponent(buttons).setButtonText(isUpdate ? t('SAVE') : t('SAVE')).setCta().onClick(onConfirm);
         new ButtonComponent(buttons).setButtonText(t('CANCEL')).onClick(() => {
             this.editingRule = null;
             this.showCreationForm = false;
