@@ -1,11 +1,13 @@
 import { moment } from 'obsidian';
 import en from './locales/en';
+import ru from './locales/ru';
 
 // Define a type based on the structure of your default language file
 type LocaleMessages = typeof en;
 
 const MESSAGES: Record<string, LocaleMessages> = {
     en: en,
+    ru: ru,
 };
 
 const locale = moment.locale();
@@ -16,6 +18,7 @@ const locale = moment.locale();
  * @param args - Values to replace '{}' placeholders in the string
  */
 export const t = (key: keyof LocaleMessages, ...args: (string | number)[]): string => {
+    // Check if the current locale exists in our MESSAGES, otherwise fallback to English
     const lang = MESSAGES[locale] ? locale : 'en';
     let text: string = MESSAGES[lang][key] || MESSAGES['en'][key];
     
