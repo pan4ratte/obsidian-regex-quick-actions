@@ -39,7 +39,7 @@ Done! The plugin will automatically install and will be ready to use.
 
 ## Roadmap
 
-- [x] Add Russian language localization.
+- [x] ~~Add Russian language translation.~~
 
 - [ ] Add a possibility to create regex sequences to use multiple regex quick actions at once.
 
