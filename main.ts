@@ -12,23 +12,25 @@ interface CommandApp extends App {
 
 interface RegexQuickActionsSettings {
     rules: string[];
+    rulesets: Record<string, string>;
     defaultRule: string | null;
     confirmFolderAction: boolean;
 }
 
 const DEFAULT_SETTINGS: RegexQuickActionsSettings = {
     rules: [],
+    rulesets: {},
     defaultRule: null,
     confirmFolderAction: true
 }
 
 export default class RegexQuickActions extends Plugin {
     settings: RegexQuickActionsSettings;
-    pathToRulesets: string;
 
     async onload() {
         await this.loadSettings();
-        this.pathToRulesets = this.app.vault.configDir + "/regex-rulesets";
+        await this.migrateFromFiles();
+
         this.addSettingTab(new RegexQuickActionsSettingsTab(this.app, this));
 
         this.settings.rules.forEach(ruleName => {
@@ -82,14 +84,12 @@ export default class RegexQuickActions extends Plugin {
                             .setTitle(t('RUN_DEFAULT'))
                             .setIcon("play")
                             .onClick(async () => {
-                                await this.applyRuleset(this.pathToRulesets + "/" + this.settings.defaultRule);
+                                await this.applyRuleset(this.settings.defaultRule!);
                             });
                     });
                 }
             })
         );
-
-        await this.reloadRulesets();
     }
 
     private getCommandId(name: string): string {
@@ -104,7 +104,7 @@ export default class RegexQuickActions extends Plugin {
                 const activeMarkdownView = this.app.workspace.getActiveViewOfType(MarkdownView);
                 if (activeMarkdownView) {
                     if (!checking) {
-                        this.applyRuleset(this.pathToRulesets + "/" + name);
+                        this.applyRuleset(name);
                     }
                     return true;
                 }
@@ -115,51 +115,79 @@ export default class RegexQuickActions extends Plugin {
 
     async loadSettings() {
         this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+        // Ensure rulesets map always exists (for older data.json without it)
+        if (!this.settings.rulesets) {
+            this.settings.rulesets = {};
+        }
     }
 
     async saveSettings() {
         await this.saveData(this.settings);
     }
 
-    async reloadRulesets() {
-        if (!await this.app.vault.adapter.exists(this.pathToRulesets)) {
-            await this.app.vault.createFolder(this.pathToRulesets);
+    /**
+     * One-time migration: reads any ruleset files from the old "regex-rulesets" folder,
+     * imports them into settings.rulesets, then removes the files and folder.
+     */
+    private async migrateFromFiles() {
+        const legacyFolder = this.app.vault.configDir + "/regex-rulesets";
+        if (!await this.app.vault.adapter.exists(legacyFolder)) return;
+
+        let migrated = false;
+        for (const name of this.settings.rules) {
+            const filePath = legacyFolder + "/" + name;
+            if (await this.app.vault.adapter.exists(filePath)) {
+                try {
+                    const content = await this.app.vault.adapter.read(filePath);
+                    this.settings.rulesets[name] = content;
+                    await this.app.vault.adapter.remove(filePath);
+                    migrated = true;
+                } catch (e) {
+                    console.error(`Regex Quick Actions: failed to migrate ruleset "${name}"`, e);
+                }
+            }
+        }
+
+        // Remove the now-empty folder
+        try {
+            const list = await this.app.vault.adapter.list(legacyFolder);
+            if (list.files.length === 0 && list.folders.length === 0) {
+                await this.app.vault.adapter.rmdir(legacyFolder, false);
+            }
+        } catch (e) {
+            console.warn("Regex Quick Actions: could not remove legacy folder", e);
+        }
+
+        if (migrated) {
+            await this.saveSettings();
         }
     }
 
     async createRuleset(name: string, content: string): Promise<boolean> {
         this.settings.rules.unshift(name);
-        const path = this.pathToRulesets + "/" + name;
-        await this.app.vault.adapter.write(path, content);
+        this.settings.rulesets[name] = content;
         await this.saveSettings();
         this.addRuleCommand(name);
         return true;
     }
 
     async updateRuleset(oldName: string, newName: string, content: string): Promise<void> {
-        const oldPath = this.pathToRulesets + "/" + oldName;
-        const newPath = this.pathToRulesets + "/" + newName;
-        await this.app.vault.adapter.write(newPath, content);
+        this.settings.rulesets[newName] = content;
         if (oldName !== newName) {
-            if (await this.app.vault.adapter.exists(oldPath)) {
-                await this.app.vault.adapter.remove(oldPath);
-            }
+            delete this.settings.rulesets[oldName];
             (this.app as CommandApp).commands.removeCommand(`${this.manifest.id}:${this.getCommandId(oldName)}`);
             const index = this.settings.rules.indexOf(oldName);
             if (index !== -1) {
                 this.settings.rules[index] = newName;
                 if (this.settings.defaultRule === oldName) this.settings.defaultRule = newName;
-                await this.saveSettings();
                 this.addRuleCommand(newName);
             }
         }
+        await this.saveSettings();
     }
 
     async deleteRuleset(name: string): Promise<void> {
-        const path = this.pathToRulesets + "/" + name;
-        if (await this.app.vault.adapter.exists(path)) {
-            await this.app.vault.adapter.remove(path);
-        }
+        delete this.settings.rulesets[name];
         (this.app as CommandApp).commands.removeCommand(`${this.manifest.id}:${this.getCommandId(name)}`);
         this.settings.rules = this.settings.rules.filter(r => r !== name);
         if (this.settings.defaultRule === name) this.settings.defaultRule = null;
@@ -167,20 +195,19 @@ export default class RegexQuickActions extends Plugin {
     }
 
     async applyRulesetToFile(file: TFile, rulesetName: string) {
-        const path = this.pathToRulesets + "/" + rulesetName;
-        if (!await this.app.vault.adapter.exists(path)) return;
-        const ruleText = await this.app.vault.adapter.read(path);
-        
+        const ruleText = this.settings.rulesets[rulesetName];
+        if (ruleText === undefined) return;
+
         const count = await this.modifyFile(file, ruleText, rulesetName);
         new Notice(t('EXECUTED_MSG', rulesetName, count));
     }
 
     async applyRulesetToFolder(folder: TFolder, rulesetName: string) {
-        const path = this.pathToRulesets + "/" + rulesetName;
-        if (!await this.app.vault.adapter.exists(path)) return;
-        const ruleText = await this.app.vault.adapter.read(path);
+        const ruleText = this.settings.rulesets[rulesetName];
+        if (ruleText === undefined) return;
+
         const files = this.app.vault.getMarkdownFiles().filter(f => f.path.startsWith(folder.path + "/"));
-        
+
         let totalCount = 0;
         for (const file of files) {
             totalCount += await this.modifyFile(file, ruleText, rulesetName);
@@ -190,15 +217,15 @@ export default class RegexQuickActions extends Plugin {
 
     private async modifyFile(file: TFile, ruleText: string, rulesetName: string): Promise<number> {
         const activeView = this.app.workspace.getActiveViewOfType(MarkdownView);
-        
+
         if (activeView && activeView.file?.path === file.path) {
             const editor = activeView.editor;
             const scroll = editor.getScrollInfo();
             const cursor = editor.getCursor();
-            
+
             const result = this.processRegex(editor.getValue(), ruleText, rulesetName);
             editor.setValue(result.content);
-            
+
             editor.setCursor(cursor);
             editor.scrollTo(0, scroll.top);
             return result.count;
@@ -228,24 +255,24 @@ export default class RegexQuickActions extends Plugin {
         return { content: output, count };
     }
 
-    async applyRuleset(rulesetPath: string) {
-        if (!await this.app.vault.adapter.exists(rulesetPath)) {
-            new Notice(rulesetPath + t('NOT_FOUND_ERR'));
+    async applyRuleset(rulesetName: string) {
+        const ruleText = this.settings.rulesets[rulesetName];
+        if (ruleText === undefined) {
+            new Notice(rulesetName + t('NOT_FOUND_ERR'));
             return;
         }
-        const ruleText = await this.app.vault.adapter.read(rulesetPath);
         const activeMarkdownView = this.app.workspace.getActiveViewOfType(MarkdownView);
         if (!activeMarkdownView) return;
         const editor = activeMarkdownView.editor;
-        
+
         const subject = editor.somethingSelected() ? editor.getSelection() : editor.getValue();
-        
+
         const pos = editor.getScrollInfo();
-        const result = this.processRegex(subject, ruleText, rulesetPath);
+        const result = this.processRegex(subject, ruleText, rulesetName);
         if (editor.somethingSelected()) editor.replaceSelection(result.content);
         else editor.setValue(result.content);
         editor.scrollTo(0, pos.top);
-        new Notice(t('EXECUTED_MSG', rulesetPath.split('/').pop() || '', result.count));
+        new Notice(t('EXECUTED_MSG', rulesetName, result.count));
     }
 }
 
@@ -331,14 +358,12 @@ class RegexQuickActionsSettingsTab extends PluginSettingTab {
         }
 
         const listWrapper = containerEl.createEl("div", { cls: "orp-saved-list" });
-        this.plugin.settings.rules.forEach(async name => {
+        this.plugin.settings.rules.forEach(name => {
             const itemRow = listWrapper.createEl("div", { cls: "orp-saved-rule-item" });
             if (this.editingRule === name) {
                 this.renderFormFields(itemRow, () => this.handleUpdate(name), true);
             } else {
-                let content = "";
-                // FIXED: added comment to empty catch block to satisfy no-empty linter rule
-                try { content = await this.plugin.app.vault.adapter.read(this.plugin.pathToRulesets + "/" + name); } catch { /* ignore if file doesn't exist */ }
+                const content = this.plugin.settings.rulesets[name] ?? "";
                 const { pattern, flags, replacement } = this.parseRuleContent(content);
                 const nameWrap = itemRow.createEl("div", { cls: "orp-input-wrap orp-name-field" });
                 nameWrap.createEl("small", { text: t('ACTION_NAME'), cls: "orp-label" });
@@ -437,7 +462,7 @@ class RegexQuickActionsSettingsTab extends PluginSettingTab {
             return false;
         }
 
-        const nameExists = this.plugin.settings.rules.some(name => 
+        const nameExists = this.plugin.settings.rules.some(name =>
             name.toLowerCase() === trimmedName.toLowerCase() && (!isUpdate || name !== this.editingRule)
         );
         if (nameExists) {
@@ -457,7 +482,7 @@ class RegexQuickActionsSettingsTab extends PluginSettingTab {
         } catch (e) {
             const errorMsg = e instanceof Error ? e.message.toLowerCase() : String(e).toLowerCase();
             const isFlagError = errorMsg.includes("flag") || /[^gimsuy]/.test(this.tempFlags);
-            
+
             if (isFlagError) {
                 new Notice(t('FLAGS_INVALID_ERR'));
                 this.triggerFieldError(this.flagsInputEl);
