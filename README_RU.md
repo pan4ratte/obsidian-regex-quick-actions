@@ -1,6 +1,6 @@
-# Regex Quick Actions
+# Плагин Regex Quick Actions
 
-[English](https://github.com/pan4ratte/obsidian-regex-quick-actions/blob/main/README.md) | Русский
+[English](https://github.com/pan4ratte/obsidian-regex-quick-actions/blob/master/README.md) | Русский
 
 Данный плагин позволяет создавать команды regex и быстро применять их в разных контекстах в Obsidian. Плагин был создан для целей автоматизации, поэтому он совместим с такими плагинами, как [Commander](https://github.com/phibr0/obsidian-commander).
 

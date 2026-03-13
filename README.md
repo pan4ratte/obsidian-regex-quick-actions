@@ -1,6 +1,6 @@
-# Regex Quick Actions
+# Regex Quick Actions plugin
 
-English | [Русский](https://github.com/pan4ratte/obsidian-regex-quick-actions/blob/main/README_RU.md)
+English | [Русский](https://github.com/pan4ratte/obsidian-regex-quick-actions/blob/master/README_RU.md)
 
 This plugin allows you to create regex actions and quickly apply them in different contexts in Obsidian. The plugin was created for automation purposes, so it is compatible with such plugins, as [Commander](https://github.com/phibr0/obsidian-commander).
 
