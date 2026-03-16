@@ -186,8 +186,8 @@ export default class RegexQuickActions extends Plugin {
             const [ , pattern, flags, replacement, mode ] = ruleMatches;
             try {
                 const matchRule = new RegExp(pattern, flags || 'gm');
+                count += output.match(matchRule)?.length ?? 0;
                 output = mode === 'x' ? output.replace(matchRule, '') : output.replace(matchRule, replacement);
-                count++;
             } catch (e) {
                 console.error(`Regex Quick Actions: Invalid Regex in ${rulesetName}`, e);
             }
