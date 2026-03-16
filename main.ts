@@ -1,4 +1,4 @@
-import { MarkdownView, Menu, Notice, Plugin, TAbstractFile, TFile, TFolder } from 'obsidian';
+import { Editor, MarkdownView, Menu, Notice, Plugin, TAbstractFile, TFile, TFolder } from 'obsidian';
 import { t } from './i18n';
 import { CommandApp, DEFAULT_SETTINGS, RegexQuickActionsSettings } from './types';
 import { ConfirmationModal, RegexQuickActionsSettingsTab } from './settings';
@@ -55,14 +55,14 @@ export default class RegexQuickActions extends Plugin {
         );
 
         this.registerEvent(
-            this.app.workspace.on("editor-menu", (menu: Menu) => {
+            this.app.workspace.on("editor-menu", (menu: Menu, editor: Editor) => {
                 if (this.settings.defaultRule) {
                     menu.addItem((item) => {
                         item
                             .setTitle(t('RUN_DEFAULT'))
                             .setIcon("play")
                             .onClick(async () => {
-                                await this.applyRuleset(this.settings.defaultRule!);
+                                await this.applyRuleset(this.settings.defaultRule!, editor);
                             });
                     });
                 }
@@ -195,15 +195,17 @@ export default class RegexQuickActions extends Plugin {
         return { content: output, count };
     }
 
-    async applyRuleset(rulesetName: string) {
+    async applyRuleset(rulesetName: string, editor?: Editor) {
         const ruleText = this.settings.rulesets[rulesetName];
         if (ruleText === undefined) {
             new Notice(rulesetName + t('NOT_FOUND_ERR'));
             return;
         }
-        const activeMarkdownView = this.app.workspace.getActiveViewOfType(MarkdownView);
-        if (!activeMarkdownView) return;
-        const editor = activeMarkdownView.editor;
+        if (!editor) {
+            const activeMarkdownView = this.app.workspace.getActiveViewOfType(MarkdownView);
+            if (!activeMarkdownView) return;
+            editor = activeMarkdownView.editor;
+        }
 
         const subject = editor.somethingSelected() ? editor.getSelection() : editor.getValue();
 
