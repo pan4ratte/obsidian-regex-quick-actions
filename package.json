@@ -1,6 +1,6 @@
 {
   "name": "obsidian-regex-quick-actions",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "description": "Allows to create and quickly apply regex actions via command palette, context menus and hotkeys.",
   "main": "main.js",
   "scripts": {
