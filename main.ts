@@ -106,6 +106,43 @@ export default class RegexQuickActions extends Plugin {
         );
 
         this.registerEvent(
+            this.app.workspace.on("files-menu", (menu: Menu, files: TAbstractFile[]) => {
+                const markdownFiles = files.filter((f): f is TFile => f instanceof TFile);
+                if (markdownFiles.length === 0) return;
+
+                if (this.settings.defaultRule) {
+                    menu.addItem((item) => {
+                        item
+                            .setTitle(t('RUN_DEFAULT'))
+                            .setIcon("play")
+                            .onClick(async () => {
+                                await this.applyRulesetToFiles(markdownFiles, this.settings.defaultRule!);
+                            });
+                    });
+                }
+
+                if (this.settings.rules.length > 0) {
+                    menu.addItem((item) => {
+                        item
+                            .setTitle(t('RUN_QUICK_ACTION'))
+                            .setIcon("list");
+                        const submenu = (item as any).setSubmenu();
+                        this.settings.rules.forEach(ruleName => {
+                            submenu.addItem((subItem: MenuItem) => {
+                                subItem
+                                    .setTitle(ruleName)
+                                    .setIcon("play")
+                                    .onClick(async () => {
+                                        await this.applyRulesetToFiles(markdownFiles, ruleName);
+                                    });
+                            });
+                        });
+                    });
+                }
+            })
+        );
+
+        this.registerEvent(
             this.app.workspace.on("editor-menu", (menu: Menu, editor: Editor) => {
                 if (this.settings.defaultRule) {
                     menu.addItem((item) => {
@@ -210,6 +247,17 @@ export default class RegexQuickActions extends Plugin {
 
         const count = await this.modifyFile(file, ruleText, rulesetName);
         new Notice(t('EXECUTED_MSG', rulesetName, count));
+    }
+
+    async applyRulesetToFiles(files: TFile[], rulesetName: string) {
+        const ruleText = this.settings.rulesets[rulesetName];
+        if (ruleText === undefined) return;
+
+        let totalCount = 0;
+        for (const file of files) {
+            totalCount += await this.modifyFile(file, ruleText, rulesetName);
+        }
+        new Notice(t('EXECUTED_MSG', rulesetName, totalCount));
     }
 
     async applyRulesetToFolder(folder: TFolder, rulesetName: string) {
