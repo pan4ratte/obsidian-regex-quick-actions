@@ -36,7 +36,7 @@ export default {
     SET_AS_DEFAULT: "Set as default quick action",
     RUN_DEFAULT: "Run default quick action",
     RUN_DEFAULT_ON_FOLDER: "Run default quick action on folder",
-    RUN_QUICK_ACTION: "Run regex quick action",
+    RUN_QUICK_ACTION: "Run quick action",
     CONFIRM_FOLDER_ACTION: "Confirmation for quick action on folder",
     CONFIRM_FOLDER_ACTION_DESC: "Show a confirmation dialog before running quick action on every file inside a chosen folder.",
 

@@ -1,4 +1,4 @@
-import { Editor, MarkdownView, Menu, Notice, Plugin, TAbstractFile, TFile, TFolder } from 'obsidian';
+import { Editor, MarkdownView, Menu, MenuItem, Notice, Plugin, TAbstractFile, TFile, TFolder } from 'obsidian';
 import { t } from './i18n';
 import { CommandApp, DEFAULT_SETTINGS, RegexQuickActionsSettings } from './types';
 import { ConfirmationModal, RegexQuickActionsSettingsTab } from './settings';
@@ -33,9 +33,9 @@ export default class RegexQuickActions extends Plugin {
                         item
                             .setTitle(t('RUN_QUICK_ACTION'))
                             .setIcon("list");
-                        const submenu = item.setSubmenu();
+                        const submenu = (item as any).setSubmenu();
                         this.settings.rules.forEach(ruleName => {
-                            submenu.addItem((subItem) => {
+                            submenu.addItem((subItem: MenuItem) => {
                                 subItem
                                     .setTitle(ruleName)
                                     .setIcon("play")
@@ -76,9 +76,9 @@ export default class RegexQuickActions extends Plugin {
                         item
                             .setTitle(t('RUN_QUICK_ACTION'))
                             .setIcon("list");
-                        const submenu = item.setSubmenu();
+                        const submenu = (item as any).setSubmenu();
                         this.settings.rules.forEach(ruleName => {
-                            submenu.addItem((subItem) => {
+                            submenu.addItem((subItem: MenuItem) => {
                                 subItem
                                     .setTitle(ruleName)
                                     .setIcon("play")
@@ -123,9 +123,9 @@ export default class RegexQuickActions extends Plugin {
                         item
                             .setTitle(t('RUN_QUICK_ACTION'))
                             .setIcon("list");
-                        const submenu = item.setSubmenu();
+                        const submenu = (item as any).setSubmenu();
                         this.settings.rules.forEach(ruleName => {
-                            submenu.addItem((subItem) => {
+                            submenu.addItem((subItem: MenuItem) => {
                                 subItem
                                     .setTitle(ruleName)
                                     .setIcon("play")
