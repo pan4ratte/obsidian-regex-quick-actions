@@ -28,6 +28,25 @@ export default class RegexQuickActions extends Plugin {
                     });
                 }
 
+                if (file instanceof TFile && this.settings.rules.length > 0) {
+                    menu.addItem((item) => {
+                        item
+                            .setTitle(t('RUN_QUICK_ACTION'))
+                            .setIcon("list");
+                        const submenu = item.setSubmenu();
+                        this.settings.rules.forEach(ruleName => {
+                            submenu.addItem((subItem) => {
+                                subItem
+                                    .setTitle(ruleName)
+                                    .setIcon("play")
+                                    .onClick(async () => {
+                                        await this.applyRulesetToFile(file, ruleName);
+                                    });
+                            });
+                        });
+                    });
+                }
+
                 if (file instanceof TFolder && this.settings.defaultRule) {
                     menu.addItem((item) => {
                         item
@@ -51,6 +70,38 @@ export default class RegexQuickActions extends Plugin {
                             });
                     });
                 }
+
+                if (file instanceof TFolder && this.settings.rules.length > 0) {
+                    menu.addItem((item) => {
+                        item
+                            .setTitle(t('RUN_QUICK_ACTION'))
+                            .setIcon("list");
+                        const submenu = item.setSubmenu();
+                        this.settings.rules.forEach(ruleName => {
+                            submenu.addItem((subItem) => {
+                                subItem
+                                    .setTitle(ruleName)
+                                    .setIcon("play")
+                                    .onClick(() => {
+                                        const run = async () => {
+                                            await this.applyRulesetToFolder(file, ruleName);
+                                        };
+                                        if (this.settings.confirmFolderAction) {
+                                            new ConfirmationModal(
+                                                this.app,
+                                                t('FOLDER_ACTION_CONFIRM_TITLE'),
+                                                t('FOLDER_ACTION_CONFIRM_MSG'),
+                                                t('YES'),
+                                                run
+                                            ).open();
+                                        } else {
+                                            run();
+                                        }
+                                    });
+                            });
+                        });
+                    });
+                }
             })
         );
 
@@ -64,6 +115,25 @@ export default class RegexQuickActions extends Plugin {
                             .onClick(async () => {
                                 await this.applyRuleset(this.settings.defaultRule!, editor);
                             });
+                    });
+                }
+
+                if (this.settings.rules.length > 0) {
+                    menu.addItem((item) => {
+                        item
+                            .setTitle(t('RUN_QUICK_ACTION'))
+                            .setIcon("list");
+                        const submenu = item.setSubmenu();
+                        this.settings.rules.forEach(ruleName => {
+                            submenu.addItem((subItem) => {
+                                subItem
+                                    .setTitle(ruleName)
+                                    .setIcon("play")
+                                    .onClick(async () => {
+                                        await this.applyRuleset(ruleName, editor);
+                                    });
+                            });
+                        });
                     });
                 }
             })
