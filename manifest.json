@@ -1,10 +1,10 @@
 {
-	"id": "obsidian-regex-quick-actions",
+	"id": "regex-quick-actions",
 	"name": "Regex Quick Actions",
 	"version": "1.4.0",
 	"minAppVersion": "0.12.19",
 	"description": "Allows to create and quickly apply regex actions via command palette, context menus and hotkeys.",
 	"author": "pan4ratte",
-	"authorUrl": "github.com/pan4ratte/",
+	"authorUrl": "https://github.com/pan4ratte/",
 	"isDesktopOnly": false
 }
