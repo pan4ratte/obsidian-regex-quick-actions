@@ -23,7 +23,11 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-          cache: 'npm'       # Automatically caches dependencies to make future builds faster
+          cache: 'npm'
+
+      # NEW: Clear npm cache to fix integrity issues
+      - name: Clear npm cache
+        run: npm cache clean --force
 
       # Step 2: Install plugin's dependencies
       - name: Install dependencies
