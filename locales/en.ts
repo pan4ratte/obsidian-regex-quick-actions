@@ -4,7 +4,7 @@ export default {
     PLUGIN_SETTINGS_HEADER: "Regex Quick Actions settings",
     MANAGE_SECTION_HEADER: "Manage quick actions",
     GENERAL_SECTION_HEADER: "General",
-    PLUGIN_DESC: "This plugin allows you to create and quickly apply regex actions via: the command palette, the file context menu in the explorer, the folder context menu in the explorer, the hotkeys. Every saved action becomes a palette command, which ensures automatisation possibilities.",
+    PLUGIN_DESC: "This plugin allows you to create and quickly apply regex actions via the command palette, note context menu, folder context menu or hotkeys. Every saved action becomes a palette command, which ensures automation possibilities.",
 
     /* Generic buttons */
 
