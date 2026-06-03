@@ -30,7 +30,7 @@ Regex Quick Actions is a continuation of the idea of [Regex Pipeline](https://gi
 
 2. In the search bar type `Regex Quick Actions`, click on the result, then "Install" and "Enable" buttons.
 
-Alternatively, you can install the plugin by following the link to the community website: [https://community.obsidian.md/plugins/regex-quick-actions](https://community.obsidian.md/plugins/regex-quick-actions)
+Alternatively, you can install the plugin by following the link to the community website: [https://community.obsidian.md/plugins/obsidian-regex-quick-actions](https://community.obsidian.md/plugins/obsidian-regex-quick-actions)
 
 ### Option 2: BRAT plugin
 

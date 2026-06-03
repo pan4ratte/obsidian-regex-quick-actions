@@ -30,7 +30,7 @@ Regex Quick Actions — это продолжение идеи плагина [R
 
 2. В поисковой строке введите `Regex Quick Actions`, нажмите на результат, затем на кнопки "Установить" и "Включить".
 
-Альтернативно, вы можете установить плагин, перейдя на сайт сообщества по ссылке: [https://community.obsidian.md/plugins/regex-quick-actions](https://community.obsidian.md/plugins/regex-quick-actions)
+Альтернативно, вы можете установить плагин, перейдя на сайт сообщества по ссылке: [https://community.obsidian.md/plugins/obsidian-regex-quick-actions](https://community.obsidian.md/plugins/obsidian-regex-quick-actions)
 
 ### Вариант 2: плагин BRAT
 
