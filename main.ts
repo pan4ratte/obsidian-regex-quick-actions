@@ -24,7 +24,7 @@ export default class RegexQuickActions extends Plugin {
                             .setTitle(t('RUN_DEFAULT'))
                             .setIcon("play")
                             .onClick(async () => {
-                                await this.applyRulesetToFile(file, this.settings.defaultRule!);
+                                await this.applyRulesetToFile(file, this.settings.defaultRule);
                             });
                     });
                 }
@@ -55,7 +55,7 @@ export default class RegexQuickActions extends Plugin {
                             .setIcon("play")
                             .onClick(() => {
                                 const run = async () => {
-                                    await this.applyRulesetToFolder(file, this.settings.defaultRule!);
+                                    await this.applyRulesetToFolder(file, this.settings.defaultRule);
                                 };
                                 if (this.settings.confirmFolderAction) {
                                     new ConfirmationModal(
@@ -66,7 +66,7 @@ export default class RegexQuickActions extends Plugin {
                                         run
                                     ).open();
                                 } else {
-                                    run();
+                                    void run();
                                 }
                             });
                     });
@@ -96,7 +96,7 @@ export default class RegexQuickActions extends Plugin {
                                                 run
                                             ).open();
                                         } else {
-                                            run();
+                                            void run();
                                         }
                                     });
                             });
@@ -117,7 +117,7 @@ export default class RegexQuickActions extends Plugin {
                             .setTitle(t('RUN_DEFAULT'))
                             .setIcon("play")
                             .onClick(async () => {
-                                await this.applyRulesetToFiles(markdownFiles, this.settings.defaultRule!);
+                                await this.applyRulesetToFiles(markdownFiles, this.settings.defaultRule);
                             });
                     });
                 }
@@ -151,7 +151,7 @@ export default class RegexQuickActions extends Plugin {
                             .setTitle(t('RUN_DEFAULT'))
                             .setIcon("play")
                             .onClick(async () => {
-                                await this.applyRuleset(this.settings.defaultRule!, editor);
+                                await this.applyRuleset(this.settings.defaultRule, editor);
                             });
                     });
                 }
@@ -190,7 +190,7 @@ export default class RegexQuickActions extends Plugin {
                 const activeMarkdownView = this.app.workspace.getActiveViewOfType(MarkdownView);
                 if (activeMarkdownView) {
                     if (!checking) {
-                        this.applyRuleset(name);
+                        void this.applyRuleset(name);
                     }
                     return true;
                 }
@@ -200,7 +200,7 @@ export default class RegexQuickActions extends Plugin {
     }
 
     async loadSettings() {
-        this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+        this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData() as Partial<RegexQuickActionsSettings>);
         // Ensure rulesets map always exists (for older data.json without it)
         if (!this.settings.rulesets) {
             this.settings.rulesets = {};

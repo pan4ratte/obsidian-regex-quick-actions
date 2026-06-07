@@ -1,4 +1,3 @@
-import eslint from "@eslint/js";
 import tsparser from "@typescript-eslint/parser";
 import obsidianmd from "eslint-plugin-obsidianmd";
 import tseslint from "typescript-eslint";
@@ -13,14 +12,14 @@ export default tseslint.config(
       "dist/",
       "rollup.config.js",
       "eslint.config.mjs",
+      "package.json",
     ],
   },
-  
-  // 2. Base ESLint & TS Recommended configs
-  eslint.configs.recommended,
-  ...tseslint.configs.recommended,
-  
-  // 3. Obsidian specific configuration
+
+  // 2. Obsidian recommended (includes eslint + typescript-eslint + obsidianmd rules)
+  ...obsidianmd.configs.recommended,
+
+  // 3. TypeScript parser with project settings for type-aware rules, plus local overrides
   {
     files: ["**/*.ts"],
     languageOptions: {
@@ -30,12 +29,7 @@ export default tseslint.config(
         tsconfigRootDir: import.meta.dirname,
       },
     },
-    plugins: {
-      obsidianmd: obsidianmd,
-    },
-    // Manually apply the obsidian rules here to avoid array-nesting issues
     rules: {
-      ...obsidianmd.configs.recommended.rules, 
       "obsidianmd/ui/sentence-case": "warn",
     },
   }

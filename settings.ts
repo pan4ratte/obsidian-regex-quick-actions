@@ -8,7 +8,7 @@ export class ConfirmationModal extends Modal {
         private title: string,
         private message: string,
         private confirmBtnText: string,
-        private onConfirm: () => void
+        private onConfirm: () => unknown
     ) {
         super(app);
     }
@@ -150,7 +150,7 @@ export class RegexQuickActionsSettingsTab extends PluginSettingTab {
         wrap.createEl("div", { text: val, cls: "orp-saved-text-display" });
     }
 
-    private renderFormFields(container: HTMLElement, onConfirm: () => void, isUpdate = false) {
+    private renderFormFields(container: HTMLElement, onConfirm: () => unknown, isUpdate = false) {
         const nameWrap = container.createEl("div", { cls: "orp-input-wrap orp-name-field" });
         nameWrap.createEl("small", { text: t('ACTION_NAME'), cls: "orp-label" });
         this.nameInputEl = nameWrap.createEl("input", {

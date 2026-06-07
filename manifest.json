@@ -2,7 +2,7 @@
 	"id": "regex-quick-actions",
 	"name": "Regex Quick Actions",
 	"version": "1.4.1",
-	"minAppVersion": "0.12.19",
+	"minAppVersion": "1.4.10",
 	"description": "Allows you to create and quickly apply regex actions via command palette, context menus and hotkeys. Made for automation purposes.",
 	"author": "pan4ratte",
 	"authorUrl": "https://github.com/pan4ratte/",

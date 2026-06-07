@@ -21,7 +21,7 @@
     "@typescript-eslint/eslint-plugin": "^8.56.0",
     "@typescript-eslint/parser": "^8.56.0",
     "eslint": "^9.39.2",
-    "eslint-plugin-obsidianmd": "^0.1.9",
+    "eslint-plugin-obsidianmd": "^0.3.0",
     "obsidian": "https://github.com/obsidianmd/obsidian-api/tarball/master",
     "rollup": "^2.32.1",
     "tslib": "^2.0.3",
