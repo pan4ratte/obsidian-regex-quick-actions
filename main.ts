@@ -1,4 +1,5 @@
-import { Editor, MarkdownView, Menu, MenuItem, Notice, Plugin, TAbstractFile, TFile, TFolder } from 'obsidian';
+import { Editor, MarkdownView, Menu, MenuItem, Notice, Plugin, TAbstractFile, TFile, TFolder, Vault } from 'obsidian';
+
 import { t } from './i18n';
 import { CommandApp, DEFAULT_SETTINGS, RegexQuickActionsSettings } from './types';
 import { ConfirmationModal, RegexQuickActionsSettingsTab } from './settings';
@@ -33,7 +34,7 @@ export default class RegexQuickActions extends Plugin {
                         item
                             .setTitle(t('RUN_QUICK_ACTION'))
                             .setIcon("list");
-                        const submenu = (item as any).setSubmenu();
+                        const submenu = (item as MenuItem & { setSubmenu(): Menu }).setSubmenu();
                         this.settings.rules.forEach(ruleName => {
                             submenu.addItem((subItem: MenuItem) => {
                                 subItem
@@ -76,7 +77,7 @@ export default class RegexQuickActions extends Plugin {
                         item
                             .setTitle(t('RUN_QUICK_ACTION'))
                             .setIcon("list");
-                        const submenu = (item as any).setSubmenu();
+                        const submenu = (item as MenuItem & { setSubmenu(): Menu }).setSubmenu();
                         this.settings.rules.forEach(ruleName => {
                             submenu.addItem((subItem: MenuItem) => {
                                 subItem
@@ -126,7 +127,7 @@ export default class RegexQuickActions extends Plugin {
                         item
                             .setTitle(t('RUN_QUICK_ACTION'))
                             .setIcon("list");
-                        const submenu = (item as any).setSubmenu();
+                        const submenu = (item as MenuItem & { setSubmenu(): Menu }).setSubmenu();
                         this.settings.rules.forEach(ruleName => {
                             submenu.addItem((subItem: MenuItem) => {
                                 subItem
@@ -160,7 +161,7 @@ export default class RegexQuickActions extends Plugin {
                         item
                             .setTitle(t('RUN_QUICK_ACTION'))
                             .setIcon("list");
-                        const submenu = (item as any).setSubmenu();
+                        const submenu = (item as MenuItem & { setSubmenu(): Menu }).setSubmenu();
                         this.settings.rules.forEach(ruleName => {
                             submenu.addItem((subItem: MenuItem) => {
                                 subItem
@@ -264,7 +265,10 @@ export default class RegexQuickActions extends Plugin {
         const ruleText = this.settings.rulesets[rulesetName];
         if (ruleText === undefined) return;
 
-        const files = this.app.vault.getMarkdownFiles().filter(f => f.path.startsWith(folder.path + "/"));
+        const files: TFile[] = [];
+        Vault.recurseChildren(folder, (f) => {
+            if (f instanceof TFile && f.extension === "md") files.push(f);
+        });
 
         let totalCount = 0;
         for (const file of files) {
