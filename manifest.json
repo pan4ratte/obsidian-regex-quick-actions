@@ -1,7 +1,7 @@
 {
 	"id": "regex-quick-actions",
 	"name": "Regex Quick Actions",
-	"version": "1.4.1",
+	"version": "1.4.2",
 	"minAppVersion": "1.4.10",
 	"description": "Allows you to create and quickly apply regex actions via command palette, context menus and hotkeys. Made for automation purposes.",
 	"author": "pan4ratte",
