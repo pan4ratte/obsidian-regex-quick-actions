@@ -1,7 +1,7 @@
 import { Editor, MarkdownView, Menu, MenuItem, Notice, Plugin, TAbstractFile, TFile, TFolder, Vault } from 'obsidian';
 
 import { t } from './i18n';
-import { CommandApp, DEFAULT_SETTINGS, RegexQuickActionsSettings } from './types';
+import { CommandApp, DEFAULT_SETTINGS, FileSnapshot, LastRun, MAX_REVERT_CHARS, RegexQuickActionsSettings } from './types';
 import { ConfirmationModal, RegexQuickActionsSettingsTab } from './settings';
 
 /**
@@ -44,6 +44,9 @@ function expandReplacement(replacement: string, args: unknown[]): string {
 export default class RegexQuickActions extends Plugin {
     settings: RegexQuickActionsSettings;
 
+    /** Last revertible run. Deliberately not persisted: it dies with the session. */
+    private lastRun: LastRun | null = null;
+
     async onload() {
         await this.loadSettings();
 
@@ -51,6 +54,14 @@ export default class RegexQuickActions extends Plugin {
 
         this.settings.rules.forEach(ruleName => {
             this.addRuleCommand(ruleName);
+        });
+
+        this.addCommand({
+            id: 'revert-last-quick-action',
+            name: t('REVERT_LAST'),
+            callback: () => {
+                void this.revertLastRun();
+            }
         });
 
         this.registerEvent(
@@ -283,7 +294,9 @@ export default class RegexQuickActions extends Plugin {
         const ruleText = this.settings.rulesets[rulesetName];
         if (ruleText === undefined) return;
 
-        const count = await this.modifyFile(file, ruleText, rulesetName);
+        const snapshots: FileSnapshot[] = [];
+        const count = await this.modifyFile(file, ruleText, rulesetName, snapshots);
+        this.rememberRun(rulesetName, snapshots);
         new Notice(t('EXECUTED_MSG', rulesetName, count));
     }
 
@@ -291,10 +304,12 @@ export default class RegexQuickActions extends Plugin {
         const ruleText = this.settings.rulesets[rulesetName];
         if (ruleText === undefined) return;
 
+        const snapshots: FileSnapshot[] = [];
         let totalCount = 0;
         for (const file of files) {
-            totalCount += await this.modifyFile(file, ruleText, rulesetName);
+            totalCount += await this.modifyFile(file, ruleText, rulesetName, snapshots);
         }
+        this.rememberRun(rulesetName, snapshots);
         new Notice(t('EXECUTED_MSG', rulesetName, totalCount));
     }
 
@@ -307,14 +322,21 @@ export default class RegexQuickActions extends Plugin {
             if (f instanceof TFile && f.extension === "md") files.push(f);
         });
 
+        const snapshots: FileSnapshot[] = [];
         let totalCount = 0;
         for (const file of files) {
-            totalCount += await this.modifyFile(file, ruleText, rulesetName);
+            totalCount += await this.modifyFile(file, ruleText, rulesetName, snapshots);
         }
+        this.rememberRun(rulesetName, snapshots);
         new Notice(t('EXECUTED_MSG', rulesetName, totalCount));
     }
 
-    private async modifyFile(file: TFile, ruleText: string, rulesetName: string): Promise<number> {
+    /**
+     * Applies a ruleset to one file and, when the content actually changed, appends a
+     * snapshot of it to `snapshots`. Files the ruleset leaves untouched are not written
+     * back at all, so a folder-wide run does not bump the mtime of every note in it.
+     */
+    private async modifyFile(file: TFile, ruleText: string, rulesetName: string, snapshots: FileSnapshot[]): Promise<number> {
         const activeView = this.app.workspace.getActiveViewOfType(MarkdownView);
 
         if (activeView && activeView.file?.path === file.path) {
@@ -322,18 +344,92 @@ export default class RegexQuickActions extends Plugin {
             const scroll = editor.getScrollInfo();
             const cursor = editor.getCursor();
 
-            const result = this.processRegex(editor.getValue(), ruleText, rulesetName);
-            editor.setValue(result.content);
+            const before = editor.getValue();
+            const result = this.processRegex(before, ruleText, rulesetName);
+            if (before === result.content) return result.count;
 
+            editor.setValue(result.content);
             editor.setCursor(cursor);
             editor.scrollTo(0, scroll.top);
+            snapshots.push({ path: file.path, before, after: result.content });
             return result.count;
         } else {
-            const fileContent = await this.app.vault.read(file);
-            const result = this.processRegex(fileContent, ruleText, rulesetName);
+            const before = await this.app.vault.read(file);
+            const result = this.processRegex(before, ruleText, rulesetName);
+            if (before === result.content) return result.count;
+
             await this.app.vault.modify(file, result.content);
+            snapshots.push({ path: file.path, before, after: result.content });
             return result.count;
         }
+    }
+
+    /**
+     * Stores a run so the revert command can undo it, replacing whatever was stored
+     * before — reverting is a single step back, not a history stack.
+     */
+    private rememberRun(rulesetName: string, snapshots: FileSnapshot[]) {
+        if (snapshots.length === 0) {
+            this.lastRun = null;
+            return;
+        }
+
+        const size = snapshots.reduce((total, s) => total + s.before.length + s.after.length, 0);
+        if (size > MAX_REVERT_CHARS) {
+            this.lastRun = null;
+            new Notice(t('REVERT_TOO_LARGE'));
+            return;
+        }
+
+        this.lastRun = { rulesetName, snapshots };
+    }
+
+    /** Restores every file of the last run that still holds exactly what the run left. */
+    async revertLastRun() {
+        const lastRun = this.lastRun;
+        if (!lastRun) {
+            new Notice(t('NOTHING_TO_REVERT'));
+            return;
+        }
+        this.lastRun = null;
+
+        let reverted = 0;
+        let skipped = 0;
+        for (const snapshot of lastRun.snapshots) {
+            if (await this.restoreFile(snapshot)) reverted++;
+            else skipped++;
+        }
+
+        if (skipped > 0) new Notice(t('REVERTED_PARTIAL_MSG', lastRun.rulesetName, reverted, skipped));
+        else new Notice(t('REVERTED_MSG', lastRun.rulesetName, reverted));
+    }
+
+    /**
+     * Puts one file back to its pre-run content. Returns false — leaving the file alone —
+     * when it is gone or no longer matches the snapshot, so edits made after the run
+     * are never overwritten.
+     */
+    private async restoreFile(snapshot: FileSnapshot): Promise<boolean> {
+        const file = this.app.vault.getFileByPath(snapshot.path);
+        if (!file) return false;
+
+        const activeView = this.app.workspace.getActiveViewOfType(MarkdownView);
+        if (activeView && activeView.file?.path === file.path) {
+            const editor = activeView.editor;
+            if (editor.getValue() !== snapshot.after) return false;
+
+            const scroll = editor.getScrollInfo();
+            const cursor = editor.getCursor();
+            editor.setValue(snapshot.before);
+            editor.setCursor(cursor);
+            editor.scrollTo(0, scroll.top);
+            return true;
+        }
+
+        const current = await this.app.vault.read(file);
+        if (current !== snapshot.after) return false;
+        await this.app.vault.modify(file, snapshot.before);
+        return true;
     }
 
     private processRegex(subject: string, ruleText: string, rulesetName: string): { content: string, count: number } {
@@ -375,6 +471,9 @@ export default class RegexQuickActions extends Plugin {
         const useSelection = this.settings.applyToSelection && editor.somethingSelected();
         const subject = useSelection ? editor.getSelection() : editor.getValue();
 
+        const path = this.app.workspace.getActiveViewOfType(MarkdownView)?.file?.path;
+        const before = useSelection ? editor.getValue() : subject;
+
         const pos = editor.getScrollInfo();
         const result = this.processRegex(subject, ruleText, rulesetName);
         if (useSelection) {
@@ -387,6 +486,9 @@ export default class RegexQuickActions extends Plugin {
             editor.setValue(result.content);
         }
         editor.scrollTo(0, pos.top);
+
+        const after = editor.getValue();
+        this.rememberRun(rulesetName, path && after !== before ? [{ path, before, after }] : []);
         new Notice(t('EXECUTED_MSG', rulesetName, result.count));
     }
 }

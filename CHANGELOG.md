@@ -5,6 +5,11 @@
 ### New features
 
 * Quick actions can now be applied to selected text only. The new "Apply quick actions to selected text" setting is off by default; with it on, actions run from the command palette, a hotkey or the note context menu affect only the current selection, and the rewritten fragment stays selected so several actions can be chained on it.
+* The new "Revert last quick action" palette command undoes the most recent run, including runs over several files or over a whole folder. Files edited after the run are skipped instead of being overwritten. The undo data lives in memory only and is lost on restart, and only the latest run can be reverted.
+
+### UI/UX enhancements and bug fixes
+
+* Files that a quick action leaves unchanged are no longer written back to disk, so a folder-wide run no longer updates the modification time of every note in it.
 
 
 ## 2.0.0

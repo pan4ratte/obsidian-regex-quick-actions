@@ -37,6 +37,7 @@ export default {
     RUN_DEFAULT: "Run default quick action",
     RUN_DEFAULT_ON_FOLDER: "Run default quick action on folder",
     RUN_QUICK_ACTION: "Run quick action",
+    REVERT_LAST: "Revert last quick action",
     CONFIRM_FOLDER_ACTION: "Confirmation for quick action on folder",
     CONFIRM_FOLDER_ACTION_DESC: "Show a confirmation dialog before running quick action on every file inside a chosen folder.",
     APPLY_TO_SELECTION: "Apply quick actions to selected text",
@@ -51,5 +52,9 @@ export default {
     FLAGS_INVALID_ERR: "Error: Invalid regex flags provided!",
     REGEX_INVALID_ERR: "Error: Invalid regular expression syntax!",
     NOT_FOUND_ERR: " not found!",
-    EXECUTED_MSG: "Executed '{}' with {} replacements."
+    EXECUTED_MSG: "Executed '{}' with {} replacements.",
+    NOTHING_TO_REVERT: "There is no quick action to revert.",
+    REVERTED_MSG: "Reverted '{}' in {} files.",
+    REVERTED_PARTIAL_MSG: "Reverted '{}' in {} files. Skipped files: {} — they were changed after the quick action ran.",
+    REVERT_TOO_LARGE: "This run changed too much text to keep in memory, so it cannot be reverted."
 };

@@ -23,6 +23,8 @@ Regex Quick Actions is a continuation of the idea of [Regex Pipeline](https://gi
 
 3. Apply actions to selected text only. Turn on "Apply quick actions to selected text" in the plugin settings: after that, any action run from the command palette, a hotkey or the note context menu is applied only to the current selection. If nothing is selected, the action is applied to the whole note. Actions run from the file or folder context menu always apply to whole files.
 
+4. Revert the last quick action with the "Revert last quick action" command from the command palette. It undoes the most recent run as a whole, including runs over several files or over a whole folder, and it is a single step back rather than a history of them. A file is left untouched if it was edited after the action ran, so your later edits are never overwritten. The undo data is kept in memory only: it is lost when Obsidian is restarted or the plugin is reloaded.
+
 
 ## Installation
 
