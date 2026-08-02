@@ -1,7 +1,15 @@
-import { App, ButtonComponent, Modal, Platform, PluginSettingTab, Setting, SettingDefinitionItem, ToggleComponent, Notice } from 'obsidian';
+import { AbstractInputSuggest, App, ButtonComponent, Modal, Platform, PluginSettingTab, Setting, SettingDefinitionItem, ToggleComponent, Notice, setIcon } from 'obsidian';
 import { t } from './i18n';
 import type RegexQuickActions from './main';
-import type { RulesetEntry } from './types';
+import type { ActionSequence, RulesetEntry } from './types';
+
+/** Replays the invalid-field border animation on an element. */
+function flashFieldError(el: HTMLElement) {
+    if (!el) return;
+    el.classList.remove('field-error');
+    void el.offsetWidth;
+    el.classList.add('field-error');
+}
 
 export class ConfirmationModal extends Modal {
     constructor(
@@ -22,7 +30,7 @@ export class ConfirmationModal extends Modal {
         new ButtonComponent(btnContainer).setButtonText(t('CANCEL')).onClick(() => this.close());
         new ButtonComponent(btnContainer)
             .setButtonText(this.confirmBtnText)
-            .setWarning()
+            .setDestructive()
             .onClick(() => {
                 this.onConfirm();
                 this.close();
@@ -31,6 +39,210 @@ export class ConfirmationModal extends Modal {
 
     onClose() {
         this.contentEl.empty();
+    }
+}
+
+/** Autosuggest over the saved quick action names, attached to a plain text input. */
+class ActionSuggest extends AbstractInputSuggest<string> {
+    constructor(
+        app: App,
+        private searchEl: HTMLInputElement,
+        private names: () => string[],
+        private onPick: (name: string) => void
+    ) {
+        super(app, searchEl);
+    }
+
+    protected getSuggestions(query: string): string[] {
+        const lowered = query.trim().toLowerCase();
+        return this.names().filter(name => name.toLowerCase().includes(lowered));
+    }
+
+    renderSuggestion(value: string, el: HTMLElement) {
+        el.setText(value);
+    }
+
+    /**
+     * Overridden instead of going through onSelect, whose default handling closes the
+     * popover after a pick and so forces a refocus before the next one. Clearing the
+     * query and replaying an input event leaves the full list open and ready, which is
+     * what building a sequence of several actions needs.
+     */
+    selectSuggestion(value: string) {
+        this.onPick(value);
+        this.setValue("");
+        this.searchEl.focus();
+        this.searchEl.dispatchEvent(new Event('input'));
+    }
+}
+
+/**
+ * Builds an action sequence: a name, plus an ordered list of quick actions picked from
+ * an autosuggest. The order is the run order, so the list is reorderable — by drag
+ * on desktop, and by up/down buttons on mobile, where dragging is not dependable.
+ */
+export class SequenceModal extends Modal {
+    private name: string;
+    private steps: string[];
+    private draggingIdx: number | null = null;
+
+    private nameInputEl: HTMLInputElement;
+    private stepsListEl: HTMLElement;
+
+    constructor(
+        app: App,
+        private plugin: RegexQuickActions,
+        private editing: ActionSequence | null,
+        private onSaved: () => void
+    ) {
+        super(app);
+        this.name = editing?.name ?? "";
+        this.steps = [...(editing?.steps ?? [])];
+    }
+
+    onOpen() {
+        const { contentEl } = this;
+        contentEl.addClass('orp-sequence-modal');
+        this.titleEl.setText(this.editing ? t('SEQUENCE_EDIT_TITLE') : t('SEQUENCE_NEW_TITLE'));
+
+        const nameWrap = contentEl.createDiv({ cls: 'orp-sequence-field orp-sequence-name-field' });
+        nameWrap.createEl('small', { text: t('SEQUENCE_NAME'), cls: 'orp-sequence-label' });
+        this.nameInputEl = nameWrap.createEl('input', {
+            type: 'text',
+            value: this.name,
+            placeholder: t('PLACEHOLDER_SEQUENCE_NAME'),
+            cls: 'orp-sequence-input orp-sequence-name-input'
+        });
+        this.nameInputEl.addEventListener('input', (e) =>
+            this.name = (e.target as HTMLInputElement).value
+        );
+
+        const searchWrap = contentEl.createDiv({ cls: 'orp-sequence-field orp-sequence-search-field' });
+        searchWrap.createEl('small', { text: t('SEQUENCE_PICKER'), cls: 'orp-sequence-label' });
+        const search = searchWrap.createEl('input', {
+            type: 'text',
+            placeholder: t('PLACEHOLDER_SEQUENCE_SEARCH'),
+            cls: 'orp-sequence-input orp-sequence-search-input'
+        });
+        // The same action may be added more than once: repeating a step is legitimate.
+        new ActionSuggest(this.app, search, () => this.plugin.settings.rules, (name) => {
+            this.steps.push(name);
+            this.renderSteps();
+        });
+
+        this.stepsListEl = contentEl.createDiv({ cls: 'orp-sequence-steps' });
+        this.renderSteps();
+
+        const buttons = contentEl.createDiv({ cls: 'orp-sequence-buttons' });
+        new ButtonComponent(buttons)
+            .setButtonText(t('SAVE'))
+            .setCta()
+            .onClick(() => void this.save())
+            .buttonEl.addClass('orp-sequence-save');
+    }
+
+    onClose() {
+        this.contentEl.empty();
+    }
+
+    private renderSteps() {
+        this.stepsListEl.empty();
+        if (this.steps.length === 0) {
+            this.stepsListEl.createDiv({ text: t('SEQUENCE_EMPTY'), cls: 'orp-sequence-hint' });
+            return;
+        }
+        this.steps.forEach((step, idx) => this.renderStepRow(step, idx));
+    }
+
+    private renderStepRow(step: string, idx: number) {
+        const row = this.stepsListEl.createDiv({ cls: 'orp-sequence-step' });
+
+        if (Platform.isMobile) {
+            // Touch drags fight the modal's own scrolling, so mobile reorders by button.
+            const arrows = row.createDiv({ cls: 'orp-sequence-reorder' });
+            const up = arrows.createEl('button', {
+                cls: 'clickable-icon orp-sequence-move-up',
+                attr: { 'aria-label': t('MOVE_UP') }
+            });
+            setIcon(up, 'arrow-up');
+            up.onclick = () => this.moveStep(idx, idx - 1);
+            const down = arrows.createEl('button', {
+                cls: 'clickable-icon orp-sequence-move-down',
+                attr: { 'aria-label': t('MOVE_DOWN') }
+            });
+            setIcon(down, 'arrow-down');
+            down.onclick = () => this.moveStep(idx, idx + 1);
+        } else {
+            if (this.draggingIdx === idx) row.addClass('is-dragging');
+            row.draggable = true;
+            const handle = row.createDiv({ cls: 'clickable-icon orp-sequence-drag-handle' });
+            setIcon(handle, 'lucide-grip-vertical');
+
+            row.addEventListener('dragstart', () => {
+                this.draggingIdx = idx;
+                row.addClass('is-dragging');
+            });
+
+            row.addEventListener('dragend', () => {
+                this.draggingIdx = null;
+                row.removeClass('is-dragging');
+                this.renderSteps();
+            });
+
+            row.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                if (this.draggingIdx === null || this.draggingIdx === idx) return;
+                const moved = this.steps.splice(this.draggingIdx, 1)[0];
+                this.steps.splice(idx, 0, moved);
+                this.draggingIdx = idx;
+                this.renderSteps();
+            });
+        }
+
+        row.createSpan({ text: `${idx + 1}`, cls: 'orp-sequence-step-index' });
+        row.createDiv({ text: step, cls: 'orp-sequence-step-name' });
+
+        const remove = row.createEl('button', {
+            cls: 'clickable-icon orp-sequence-step-remove',
+            attr: { 'aria-label': t('REMOVE') }
+        });
+        setIcon(remove, 'x');
+        remove.onclick = () => {
+            this.steps.splice(idx, 1);
+            this.renderSteps();
+        };
+    }
+
+    private moveStep(from: number, to: number) {
+        if (to < 0 || to >= this.steps.length) return;
+        const moved = this.steps.splice(from, 1)[0];
+        this.steps.splice(to, 0, moved);
+        this.renderSteps();
+    }
+
+    private async save() {
+        const name = this.name.trim();
+        if (!name) {
+            new Notice(t('NAME_EMPTY_ERR'));
+            flashFieldError(this.nameInputEl);
+            return;
+        }
+        if (this.plugin.isNameTaken(name, this.editing?.name)) {
+            new Notice(t('SEQUENCE_NAME_EXISTS_ERR'));
+            flashFieldError(this.nameInputEl);
+            return;
+        }
+        // A single action is just that action: a sequence needs something to sequence.
+        if (this.steps.length < 2) {
+            new Notice(t('SEQUENCE_TOO_SHORT_ERR'));
+            return;
+        }
+
+        if (this.editing) await this.plugin.updateSequence(this.editing.name, name, this.steps);
+        else await this.plugin.createSequence(name, this.steps);
+
+        this.onSaved();
+        this.close();
     }
 }
 
@@ -180,16 +392,28 @@ export class RegexQuickActionsSettingsTab extends PluginSettingTab {
     private renderManager(root: HTMLElement) {
         root.empty();
 
-        new Setting(root)
-            .setName(t('ADD_QUICK_ACTION'))
-            .addButton(btn => btn
-                .setButtonText(t('ADD'))
-                .setCta()
-                .onClick(() => {
-                    this.resetTempFields();
-                    this.showCreationForm = !this.showCreationForm;
-                    this.rerender();
-                }));
+        // Same stacked, two-button layout as the backup and restore option, but with no
+        // name or description of its own: the buttons say what they do.
+        const createRow = new Setting(root);
+        createRow.settingEl.addClass('orp-stacked-row', 'orp-buttons-only');
+        createRow.addButton(btn => {
+            this.labelIconButton(btn, 'list-ordered', t('ADD_SEQUENCE'));
+            btn.onClick(() => {
+                if (this.plugin.settings.rules.length === 0) {
+                    new Notice(t('SEQUENCE_NEEDS_ACTIONS_ERR'));
+                    return;
+                }
+                new SequenceModal(this.app, this.plugin, null, () => this.rerender()).open();
+            });
+        });
+        createRow.addButton(btn => {
+            this.labelIconButton(btn, 'plus', t('ADD_QUICK_ACTION'));
+            btn.onClick(() => {
+                this.resetTempFields();
+                this.showCreationForm = !this.showCreationForm;
+                this.rerender();
+            });
+        });
 
         if (this.showCreationForm) {
             const formContainer = root.createEl("div", { cls: "orp-creation-row" });
@@ -228,7 +452,7 @@ export class RegexQuickActionsSettingsTab extends PluginSettingTab {
                     this.showCreationForm = false;
                     this.rerender();
                 });
-                new ButtonComponent(buttons).setButtonText(t('DELETE')).setWarning().onClick(() => {
+                new ButtonComponent(buttons).setButtonText(t('DELETE')).setDestructive().onClick(() => {
                     new ConfirmationModal(
                         this.app,
                         t('DELETE_HEADER'),
@@ -241,6 +465,48 @@ export class RegexQuickActionsSettingsTab extends PluginSettingTab {
                     ).open();
                 });
             }
+        });
+
+        this.renderSequenceList(root);
+    }
+
+    /** Saved sequences, listed under their own heading below the quick actions. */
+    private renderSequenceList(root: HTMLElement) {
+        const sequences = this.plugin.settings.sequences;
+        if (sequences.length === 0) return;
+
+        root.createEl("div", { text: t('SEQUENCES_HEADER'), cls: "orp-list-heading" });
+        const listWrapper = root.createEl("div", { cls: "orp-saved-list" });
+
+        sequences.forEach(sequence => {
+            const itemRow = listWrapper.createEl("div", { cls: "orp-saved-rule-item" });
+            const nameWrap = itemRow.createEl("div", { cls: "orp-input-wrap orp-name-field" });
+            nameWrap.createEl("small", { text: t('SEQUENCE_NAME'), cls: "orp-label" });
+            nameWrap.createEl("div", { text: sequence.name, cls: "orp-saved-text-display" });
+
+            const stepsWrap = itemRow.createEl("div", { cls: "orp-input-wrap" });
+            stepsWrap.createEl("small", { text: t('SEQUENCE_STEPS_LABEL'), cls: "orp-label" });
+            stepsWrap.createEl("div", {
+                text: sequence.steps.join("  →  "),
+                cls: "orp-saved-text-display"
+            });
+
+            const buttons = itemRow.createEl("div", { cls: "orp-sequence-actions" });
+            new ButtonComponent(buttons).setButtonText(t('EDIT')).onClick(() => {
+                new SequenceModal(this.app, this.plugin, sequence, () => this.rerender()).open();
+            });
+            new ButtonComponent(buttons).setButtonText(t('DELETE')).setDestructive().onClick(() => {
+                new ConfirmationModal(
+                    this.app,
+                    t('DELETE_SEQUENCE_HEADER'),
+                    t('DELETE_SEQUENCE_CONFIRM', sequence.name),
+                    t('YES'),
+                    async () => {
+                        await this.plugin.deleteSequence(sequence.name);
+                        this.rerender();
+                    }
+                ).open();
+            });
         });
     }
 
@@ -309,10 +575,7 @@ export class RegexQuickActionsSettingsTab extends PluginSettingTab {
     }
 
     private triggerFieldError(el: HTMLElement) {
-        if (!el) return;
-        el.classList.remove('field-error');
-        void el.offsetWidth;
-        el.classList.add('field-error');
+        flashFieldError(el);
     }
 
     private validateInputs(isUpdate = false): boolean {
@@ -323,9 +586,12 @@ export class RegexQuickActionsSettingsTab extends PluginSettingTab {
             return false;
         }
 
+        // Sequences share the command palette with actions, so the names cannot collide.
         const nameExists = this.plugin.settings.rules.some(name =>
             name.toLowerCase() === trimmedName.toLowerCase() &&
             (!isUpdate || name !== this.editingRule)
+        ) || this.plugin.settings.sequences.some(sequence =>
+            sequence.name.toLowerCase() === trimmedName.toLowerCase()
         );
         if (nameExists) {
             new Notice(t('NAME_EXISTS_ERR'));
@@ -388,7 +654,7 @@ export class RegexQuickActionsSettingsTab extends PluginSettingTab {
 
     /** Hands the whole action set to the user as a JSON download. Desktop only. */
     private exportQuickActions() {
-        const { rules, rulesets, defaultRule } = this.plugin.settings;
+        const { rules, rulesets, sequences, defaultRule } = this.plugin.settings;
         if (rules.length === 0) {
             new Notice(t('EXPORT_EMPTY_ERR'));
             return;
@@ -400,7 +666,8 @@ export class RegexQuickActionsSettingsTab extends PluginSettingTab {
             exportedAt: new Date().toISOString(),
             defaultRule,
             rules,
-            rulesets
+            rulesets,
+            sequences
         };
 
         const url = URL.createObjectURL(new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' }));
@@ -447,13 +714,14 @@ export class RegexQuickActionsSettingsTab extends PluginSettingTab {
             new Notice(t('IMPORT_INVALID_ERR'));
             return;
         }
-        if (entries.length === 0) {
+        const sequences = this.readImportSequences(data);
+        if (entries.length === 0 && sequences.length === 0) {
             new Notice(t('IMPORT_EMPTY_ERR'));
             return;
         }
 
         const defaultRule = this.readDefaultRule(data);
-        const result = await this.plugin.importRulesets(entries, defaultRule);
+        const result = await this.plugin.importData(entries, sequences, defaultRule);
         this.rerender();
         new Notice(t('IMPORT_DONE_MSG', result.added, result.renamed, result.skipped));
     }
@@ -486,6 +754,27 @@ export class RegexQuickActionsSettingsTab extends PluginSettingTab {
             entries.push({ name: trimmed, content });
         }
         return entries;
+    }
+
+    /**
+     * Pulls the sequences out of a parsed export file. Missing or malformed sequences
+     * are simply absent: a file written before sequences existed still imports.
+     */
+    private readImportSequences(data: unknown): ActionSequence[] {
+        const value = (data as { sequences?: unknown }).sequences;
+        if (!Array.isArray(value)) return [];
+
+        const sequences: ActionSequence[] = [];
+        for (const item of value) {
+            if (typeof item !== 'object' || item === null) continue;
+            const { name, steps } = item as { name?: unknown, steps?: unknown };
+            if (typeof name !== 'string' || !name.trim() || !Array.isArray(steps)) continue;
+
+            const validSteps = steps.filter((step): step is string => typeof step === 'string');
+            if (validSteps.length === 0) continue;
+            sequences.push({ name: name.trim(), steps: validSteps });
+        }
+        return sequences;
     }
 
     private readDefaultRule(data: unknown): string | null {

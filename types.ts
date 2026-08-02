@@ -9,6 +9,21 @@ export interface CommandApp extends App {
     };
 }
 
+/** A named chain of quick actions, run one after another in the stored order. */
+export interface ActionSequence {
+    name: string;
+    steps: string[];
+}
+
+/**
+ * A resolved unit of work: the rule texts to apply, in order, under one display name.
+ * A quick action resolves to a single step, a sequence to one step per member action.
+ */
+export interface QuickJob {
+    name: string;
+    steps: string[];
+}
+
 /** A single quick action as it travels through an export file. */
 export interface RulesetEntry {
     name: string;
@@ -47,6 +62,7 @@ export const MAX_REVERT_CHARS = 10_000_000;
 export interface RegexQuickActionsSettings {
     rules: string[];
     rulesets: Record<string, string>;
+    sequences: ActionSequence[];
     defaultRule: string | null;
     confirmFolderAction: boolean;
     applyToSelection: boolean;
@@ -55,6 +71,7 @@ export interface RegexQuickActionsSettings {
 export const DEFAULT_SETTINGS: RegexQuickActionsSettings = {
     rules: [],
     rulesets: {},
+    sequences: [],
     defaultRule: null,
     confirmFolderAction: true,
     applyToSelection: false

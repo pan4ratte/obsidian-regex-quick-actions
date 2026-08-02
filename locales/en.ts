@@ -4,7 +4,7 @@ export default {
     PLUGIN_SETTINGS_HEADER: "Regex Quick Actions settings",
     MANAGE_SECTION_HEADER: "Manage quick actions",
     GENERAL_SECTION_HEADER: "General",
-    PLUGIN_DESC: "This plugin allows you to create and quickly apply regex actions via the command palette, note context menu, folder context menu or hotkeys. Every saved action becomes a palette command, which ensures automation possibilities.",
+    PLUGIN_DESC: "Create and quickly apply regex commands via command palette, context menus and hotkeys. Made for automation purposes.",
 
     /* Generic buttons */
 
@@ -21,6 +21,8 @@ export default {
 
     DELETE_HEADER: "Delete quick action",
     DELETE_CONFIRM: "Are you sure you want to delete quick action \"{}\"?",
+    DELETE_SEQUENCE_HEADER: "Delete action sequence",
+    DELETE_SEQUENCE_CONFIRM: "Are you sure you want to delete action sequence \"{}\"?",
     FOLDER_ACTION_CONFIRM_TITLE: "Run quick action on folder",
     FOLDER_ACTION_CONFIRM_MSG: "Are you sure that you want to run default quick action on every file inside this folder? This action is irreversible.",
 
@@ -31,6 +33,19 @@ export default {
     PLACEHOLDER_FLAGS: "e.g. gm",
     PLACEHOLDER_REPLACEMENT: "Replacement text",
     ADD_QUICK_ACTION: "New quick action",
+    ADD_SEQUENCE: "New action sequence",
+    SEQUENCES_HEADER: "Action sequences",
+    SEQUENCE_NEW_TITLE: "New action sequence",
+    SEQUENCE_EDIT_TITLE: "Edit action sequence",
+    SEQUENCE_NAME: "Action sequence name",
+    PLACEHOLDER_SEQUENCE_NAME: "Used to call the sequence via command palette",
+    SEQUENCE_STEPS_LABEL: "Quick actions in run order",
+    SEQUENCE_EMPTY: "No quick actions added yet. Find them with the search field above.",
+    SEQUENCE_PICKER: "Search quick actions to add",
+    PLACEHOLDER_SEQUENCE_SEARCH: "Start typing to display auto-complete suggestions",
+    MOVE_UP: "Move up",
+    MOVE_DOWN: "Move down",
+    REMOVE: "Remove",
     ACTION_NAME: "Quick action name",
     SEARCH_REGEX: "Regex rule",
     FLAGS: "Flags",
@@ -43,16 +58,19 @@ export default {
     CONFIRM_FOLDER_ACTION: "Confirmation for quick action on folder",
     CONFIRM_FOLDER_ACTION_DESC: "Show a confirmation dialog before running quick action on every file inside a chosen folder.",
     APPLY_TO_SELECTION: "Apply quick actions to selected text",
-    APPLY_TO_SELECTION_DESC: "When text is selected in the editor, run quick actions on that selection only instead of the whole note. With nothing selected, the whole note is used as before. Actions run from the file or folder context menu always apply to whole files.",
+    APPLY_TO_SELECTION_DESC: "When text is selected in the editor, run quick actions on that selection only instead of the whole note.",
     APPLY_TO_SELECTION_ALIAS: "selection",
-    EXPORT_IMPORT: "Backup and restore actions",
-    EXPORT_IMPORT_DESC: "Save all quick actions to a JSON file, or add them from one. Nothing is overwritten.",
+    EXPORT_IMPORT: "Backup and restore",
+    EXPORT_IMPORT_DESC: "Export and import your quick actions and sequences.",
     EXPORT_MOBILE_UNAVAILABLE: "Export is desktop only.",
 
     /* Errors and messages */
 
     NAME_EMPTY_ERR: "Error: Quick action name cannot be empty!",
     NAME_EXISTS_ERR: "Error: An action with this name already exists!",
+    SEQUENCE_NAME_EXISTS_ERR: "Error: A quick action or sequence with this name already exists!",
+    SEQUENCE_TOO_SHORT_ERR: "Error: An action sequence must contain at least two quick actions!",
+    SEQUENCE_NEEDS_ACTIONS_ERR: "Create at least one quick action before building a sequence.",
     PATTERN_EMPTY_ERR: "Error: Regex pattern cannot be empty!",
     FLAGS_INVALID_ERR: "Error: Invalid regex flags provided!",
     REGEX_INVALID_ERR: "Error: Invalid regular expression syntax!",

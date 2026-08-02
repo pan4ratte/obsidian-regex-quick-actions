@@ -1,7 +1,7 @@
 import { Editor, MarkdownView, Menu, MenuItem, Notice, Plugin, TAbstractFile, TFile, TFolder, Vault } from 'obsidian';
 
 import { t } from './i18n';
-import { CommandApp, DEFAULT_SETTINGS, FileSnapshot, ImportResult, LastRun, MAX_REVERT_CHARS, RegexQuickActionsSettings, RulesetEntry } from './types';
+import { ActionSequence, CommandApp, DEFAULT_SETTINGS, FileSnapshot, ImportResult, LastRun, MAX_REVERT_CHARS, QuickJob, RegexQuickActionsSettings, RulesetEntry } from './types';
 import { ConfirmationModal, RegexQuickActionsSettingsTab } from './settings';
 
 /**
@@ -64,92 +64,18 @@ export default class RegexQuickActions extends Plugin {
             }
         });
 
+        this.settings.sequences.forEach(sequence => {
+            this.addSequenceCommand(sequence.name);
+        });
+
         this.registerEvent(
             this.app.workspace.on("file-menu", (menu: Menu, file: TAbstractFile) => {
-                if (file instanceof TFile && this.settings.defaultRule) {
-                    menu.addItem((item) => {
-                        item
-                            .setTitle(t('RUN_DEFAULT'))
-                            .setIcon("play")
-                            .onClick(async () => {
-                                await this.applyRulesetToFile(file, this.settings.defaultRule);
-                            });
-                    });
-                }
-
-                if (file instanceof TFile && this.settings.rules.length > 0) {
-                    menu.addItem((item) => {
-                        item
-                            .setTitle(t('RUN_QUICK_ACTION'))
-                            .setIcon("list");
-                        const submenu = (item as MenuItem & { setSubmenu(): Menu }).setSubmenu();
-                        this.settings.rules.forEach(ruleName => {
-                            submenu.addItem((subItem: MenuItem) => {
-                                subItem
-                                    .setTitle(ruleName)
-                                    .setIcon("play")
-                                    .onClick(async () => {
-                                        await this.applyRulesetToFile(file, ruleName);
-                                    });
-                            });
-                        });
-                    });
-                }
-
-                if (file instanceof TFolder && this.settings.defaultRule) {
-                    menu.addItem((item) => {
-                        item
-                            .setTitle(t('RUN_DEFAULT_ON_FOLDER'))
-                            .setIcon("play")
-                            .onClick(() => {
-                                const run = async () => {
-                                    await this.applyRulesetToFolder(file, this.settings.defaultRule);
-                                };
-                                if (this.settings.confirmFolderAction) {
-                                    new ConfirmationModal(
-                                        this.app,
-                                        t('FOLDER_ACTION_CONFIRM_TITLE'),
-                                        t('FOLDER_ACTION_CONFIRM_MSG'),
-                                        t('YES'),
-                                        run
-                                    ).open();
-                                } else {
-                                    void run();
-                                }
-                            });
-                    });
-                }
-
-                if (file instanceof TFolder && this.settings.rules.length > 0) {
-                    menu.addItem((item) => {
-                        item
-                            .setTitle(t('RUN_QUICK_ACTION'))
-                            .setIcon("list");
-                        const submenu = (item as MenuItem & { setSubmenu(): Menu }).setSubmenu();
-                        this.settings.rules.forEach(ruleName => {
-                            submenu.addItem((subItem: MenuItem) => {
-                                subItem
-                                    .setTitle(ruleName)
-                                    .setIcon("play")
-                                    .onClick(() => {
-                                        const run = async () => {
-                                            await this.applyRulesetToFolder(file, ruleName);
-                                        };
-                                        if (this.settings.confirmFolderAction) {
-                                            new ConfirmationModal(
-                                                this.app,
-                                                t('FOLDER_ACTION_CONFIRM_TITLE'),
-                                                t('FOLDER_ACTION_CONFIRM_MSG'),
-                                                t('YES'),
-                                                run
-                                            ).open();
-                                        } else {
-                                            void run();
-                                        }
-                                    });
-                            });
-                        });
-                    });
+                if (file instanceof TFile) {
+                    this.addDefaultItem(menu, t('RUN_DEFAULT'), job => void this.applyJobToFile(file, job));
+                    this.addRunSubmenu(menu, job => void this.applyJobToFile(file, job));
+                } else if (file instanceof TFolder) {
+                    this.addDefaultItem(menu, t('RUN_DEFAULT_ON_FOLDER'), job => this.runOnFolder(file, job));
+                    this.addRunSubmenu(menu, job => this.runOnFolder(file, job));
                 }
             })
         );
@@ -159,75 +85,99 @@ export default class RegexQuickActions extends Plugin {
                 const markdownFiles = files.filter((f): f is TFile => f instanceof TFile);
                 if (markdownFiles.length === 0) return;
 
-                if (this.settings.defaultRule) {
-                    menu.addItem((item) => {
-                        item
-                            .setTitle(t('RUN_DEFAULT'))
-                            .setIcon("play")
-                            .onClick(async () => {
-                                await this.applyRulesetToFiles(markdownFiles, this.settings.defaultRule);
-                            });
-                    });
-                }
-
-                if (this.settings.rules.length > 0) {
-                    menu.addItem((item) => {
-                        item
-                            .setTitle(t('RUN_QUICK_ACTION'))
-                            .setIcon("list");
-                        const submenu = (item as MenuItem & { setSubmenu(): Menu }).setSubmenu();
-                        this.settings.rules.forEach(ruleName => {
-                            submenu.addItem((subItem: MenuItem) => {
-                                subItem
-                                    .setTitle(ruleName)
-                                    .setIcon("play")
-                                    .onClick(async () => {
-                                        await this.applyRulesetToFiles(markdownFiles, ruleName);
-                                    });
-                            });
-                        });
-                    });
-                }
+                this.addDefaultItem(menu, t('RUN_DEFAULT'), job => void this.applyJobToFiles(markdownFiles, job));
+                this.addRunSubmenu(menu, job => void this.applyJobToFiles(markdownFiles, job));
             })
         );
 
         this.registerEvent(
             this.app.workspace.on("editor-menu", (menu: Menu, editor: Editor) => {
-                if (this.settings.defaultRule) {
-                    menu.addItem((item) => {
-                        item
-                            .setTitle(t('RUN_DEFAULT'))
-                            .setIcon("play")
-                            .onClick(async () => {
-                                await this.applyRuleset(this.settings.defaultRule, editor);
-                            });
-                    });
-                }
-
-                if (this.settings.rules.length > 0) {
-                    menu.addItem((item) => {
-                        item
-                            .setTitle(t('RUN_QUICK_ACTION'))
-                            .setIcon("list");
-                        const submenu = (item as MenuItem & { setSubmenu(): Menu }).setSubmenu();
-                        this.settings.rules.forEach(ruleName => {
-                            submenu.addItem((subItem: MenuItem) => {
-                                subItem
-                                    .setTitle(ruleName)
-                                    .setIcon("play")
-                                    .onClick(async () => {
-                                        await this.applyRuleset(ruleName, editor);
-                                    });
-                            });
-                        });
-                    });
-                }
+                this.addDefaultItem(menu, t('RUN_DEFAULT'), job => void this.applyJob(job, editor));
+                this.addRunSubmenu(menu, job => void this.applyJob(job, editor));
             })
         );
     }
 
+    /** Adds the "run default" entry, when a default quick action is set. */
+    private addDefaultItem(menu: Menu, title: string, run: (job: QuickJob) => void) {
+        const job = this.settings.defaultRule ? this.resolveAction(this.settings.defaultRule) : null;
+        if (!job) return;
+
+        menu.addItem((item) => {
+            item.setTitle(title).setIcon("play").onClick(() => run(job));
+        });
+    }
+
+    /** Adds the submenu that lists every quick action and then every sequence. */
+    private addRunSubmenu(menu: Menu, run: (job: QuickJob) => void) {
+        if (this.settings.rules.length === 0 && this.settings.sequences.length === 0) return;
+
+        menu.addItem((item) => {
+            item.setTitle(t('RUN_QUICK_ACTION')).setIcon("list");
+            const submenu = (item as MenuItem & { setSubmenu(): Menu }).setSubmenu();
+
+            this.settings.rules.forEach(ruleName => {
+                const job = this.resolveAction(ruleName);
+                if (!job) return;
+                submenu.addItem((subItem: MenuItem) => {
+                    subItem.setTitle(ruleName).setIcon("play").onClick(() => run(job));
+                });
+            });
+
+            this.settings.sequences.forEach(sequence => {
+                const job = this.resolveSequence(sequence.name);
+                if (!job) return;
+                submenu.addItem((subItem: MenuItem) => {
+                    subItem.setTitle(sequence.name).setIcon("list-ordered").onClick(() => run(job));
+                });
+            });
+        });
+    }
+
+    /** Runs a job across a folder, behind the confirmation dialog when it is enabled. */
+    private runOnFolder(folder: TFolder, job: QuickJob) {
+        const run = async () => {
+            await this.applyJobToFolder(folder, job);
+        };
+        if (this.settings.confirmFolderAction) {
+            new ConfirmationModal(
+                this.app,
+                t('FOLDER_ACTION_CONFIRM_TITLE'),
+                t('FOLDER_ACTION_CONFIRM_MSG'),
+                t('YES'),
+                run
+            ).open();
+        } else {
+            void run();
+        }
+    }
+
+    /** Turns a quick action name into the single-step job that runs it. */
+    private resolveAction(name: string): QuickJob | null {
+        const ruleText = this.settings.rulesets[name];
+        return ruleText === undefined ? null : { name, steps: [ruleText] };
+    }
+
+    /**
+     * Turns a sequence name into the job that runs its member actions in order. Members
+     * that no longer exist are dropped rather than aborting the whole sequence.
+     */
+    private resolveSequence(name: string): QuickJob | null {
+        const sequence = this.settings.sequences.find(item => item.name === name);
+        if (!sequence) return null;
+
+        const steps = sequence.steps
+            .map(step => this.settings.rulesets[step])
+            .filter((ruleText): ruleText is string => ruleText !== undefined);
+        return { name, steps };
+    }
+
     private getCommandId(name: string): string {
         return `apply-rule-${name.toLowerCase().replace(/[^a-z0-9]/g, '-')}`;
+    }
+
+    private getSequenceCommandId(name: string): string {
+        return `run-sequence-${name.toLowerCase().replace(/[^a-z0-9]/g, '-')}`;
     }
 
     addRuleCommand(name: string) {
@@ -238,7 +188,28 @@ export default class RegexQuickActions extends Plugin {
                 const activeMarkdownView = this.app.workspace.getActiveViewOfType(MarkdownView);
                 if (activeMarkdownView) {
                     if (!checking) {
-                        void this.applyRuleset(name);
+                        const job = this.resolveAction(name);
+                        if (job) void this.applyJob(job);
+                        else new Notice(name + t('NOT_FOUND_ERR'));
+                    }
+                    return true;
+                }
+                return false;
+            }
+        });
+    }
+
+    addSequenceCommand(name: string) {
+        this.addCommand({
+            id: this.getSequenceCommandId(name),
+            name: `${name}`,
+            checkCallback: (checking: boolean) => {
+                const activeMarkdownView = this.app.workspace.getActiveViewOfType(MarkdownView);
+                if (activeMarkdownView) {
+                    if (!checking) {
+                        const job = this.resolveSequence(name);
+                        if (job) void this.applyJob(job);
+                        else new Notice(name + t('NOT_FOUND_ERR'));
                     }
                     return true;
                 }
@@ -252,6 +223,9 @@ export default class RegexQuickActions extends Plugin {
         // Ensure rulesets map always exists (for older data.json without it)
         if (!this.settings.rulesets) {
             this.settings.rulesets = {};
+        }
+        if (!Array.isArray(this.settings.sequences)) {
+            this.settings.sequences = [];
         }
     }
 
@@ -278,7 +252,44 @@ export default class RegexQuickActions extends Plugin {
                 if (this.settings.defaultRule === oldName) this.settings.defaultRule = newName;
                 this.addRuleCommand(newName);
             }
+            // Sequences refer to their members by name, so a rename has to follow through.
+            this.settings.sequences.forEach(sequence => {
+                sequence.steps = sequence.steps.map(step => step === oldName ? newName : step);
+            });
         }
+        await this.saveSettings();
+    }
+
+    /** True when a quick action or another sequence already uses this name. */
+    isNameTaken(name: string, exceptSequence?: string): boolean {
+        const lowered = name.toLowerCase();
+        return this.settings.rules.some(rule => rule.toLowerCase() === lowered)
+            || this.settings.sequences.some(sequence =>
+                sequence.name.toLowerCase() === lowered && sequence.name !== exceptSequence);
+    }
+
+    async createSequence(name: string, steps: string[]): Promise<void> {
+        this.settings.sequences.unshift({ name, steps });
+        await this.saveSettings();
+        this.addSequenceCommand(name);
+    }
+
+    async updateSequence(oldName: string, newName: string, steps: string[]): Promise<void> {
+        const sequence = this.settings.sequences.find(item => item.name === oldName);
+        if (!sequence) return;
+
+        sequence.name = newName;
+        sequence.steps = steps;
+        if (oldName !== newName) {
+            (this.app as CommandApp).commands.removeCommand(`${this.manifest.id}:${this.getSequenceCommandId(oldName)}`);
+            this.addSequenceCommand(newName);
+        }
+        await this.saveSettings();
+    }
+
+    async deleteSequence(name: string): Promise<void> {
+        this.settings.sequences = this.settings.sequences.filter(sequence => sequence.name !== name);
+        (this.app as CommandApp).commands.removeCommand(`${this.manifest.id}:${this.getSequenceCommandId(name)}`);
         await this.saveSettings();
     }
 
@@ -287,28 +298,37 @@ export default class RegexQuickActions extends Plugin {
         return this.settings.rules.find(rule => rule.toLowerCase() === name.toLowerCase());
     }
 
+    /** First "Name (n)" that no quick action and no sequence is using. */
+    private freeName(base: string): string {
+        let suffix = 2;
+        while (this.isNameTaken(`${base} (${suffix})`)) suffix++;
+        return `${base} (${suffix})`;
+    }
+
     /**
-     * Merges an imported action set into the current one without ever overwriting: an
-     * entry whose name is taken is added under a free name, and an entry that is already
+     * Merges an imported set into the current one without ever overwriting: an entry
+     * whose name is taken is added under a free name, and an entry that is already
      * present verbatim is skipped. `defaultRule` is only adopted when this vault has none.
      */
-    async importRulesets(entries: RulesetEntry[], defaultRule: string | null): Promise<ImportResult> {
+    async importData(entries: RulesetEntry[], sequences: ActionSequence[], defaultRule: string | null): Promise<ImportResult> {
         const result: ImportResult = { added: 0, renamed: 0, skipped: 0 };
+        // Each imported action's original name mapped to the name it ended up with, so
+        // imported sequences still point at their own members after a rename.
+        const resolved = new Map<string, string>();
 
-        // Reversed because createRuleset-style insertion puts each action on top of the
-        // list; walking backwards leaves the imported set in its original order.
+        // Reversed because insertion puts each entry on top of the list; walking
+        // backwards leaves the imported set in its original order.
         for (const entry of [...entries].reverse()) {
-            const existing = this.findRuleName(entry.name);
-            if (existing !== undefined && this.settings.rulesets[existing] === entry.content) {
+            const existingAction = this.findRuleName(entry.name);
+            if (existingAction !== undefined && this.settings.rulesets[existingAction] === entry.content) {
+                resolved.set(entry.name, existingAction);
                 result.skipped++;
                 continue;
             }
 
             let name = entry.name;
-            if (existing !== undefined) {
-                let suffix = 2;
-                while (this.findRuleName(`${entry.name} (${suffix})`)) suffix++;
-                name = `${entry.name} (${suffix})`;
+            if (this.isNameTaken(name)) {
+                name = this.freeName(name);
                 result.renamed++;
             } else {
                 result.added++;
@@ -317,6 +337,37 @@ export default class RegexQuickActions extends Plugin {
             this.settings.rules.unshift(name);
             this.settings.rulesets[name] = entry.content;
             this.addRuleCommand(name);
+            resolved.set(entry.name, name);
+        }
+
+        for (const sequence of [...sequences].reverse()) {
+            // A step points at an action that came in with the file, or at one already
+            // here under that name; anything else no longer exists and is dropped.
+            const steps = sequence.steps
+                .map(step => resolved.get(step) ?? this.findRuleName(step))
+                .filter((step): step is string => step !== undefined);
+            if (steps.length === 0) {
+                result.skipped++;
+                continue;
+            }
+
+            const existing = this.settings.sequences.find(item =>
+                item.name.toLowerCase() === sequence.name.toLowerCase());
+            if (existing && existing.steps.join('\n') === steps.join('\n')) {
+                result.skipped++;
+                continue;
+            }
+
+            let name = sequence.name;
+            if (this.isNameTaken(name)) {
+                name = this.freeName(name);
+                result.renamed++;
+            } else {
+                result.added++;
+            }
+
+            this.settings.sequences.unshift({ name, steps });
+            this.addSequenceCommand(name);
         }
 
         if (this.settings.defaultRule === null && defaultRule) {
@@ -332,36 +383,32 @@ export default class RegexQuickActions extends Plugin {
         (this.app as CommandApp).commands.removeCommand(`${this.manifest.id}:${this.getCommandId(name)}`);
         this.settings.rules = this.settings.rules.filter(r => r !== name);
         if (this.settings.defaultRule === name) this.settings.defaultRule = null;
+        // A deleted action cannot stay a step of any sequence.
+        this.settings.sequences.forEach(sequence => {
+            sequence.steps = sequence.steps.filter(step => step !== name);
+        });
         await this.saveSettings();
     }
 
-    async applyRulesetToFile(file: TFile, rulesetName: string) {
-        const ruleText = this.settings.rulesets[rulesetName];
-        if (ruleText === undefined) return;
-
+    async applyJobToFile(file: TFile, job: QuickJob) {
         const snapshots: FileSnapshot[] = [];
-        const count = await this.modifyFile(file, ruleText, rulesetName, snapshots);
-        this.rememberRun(rulesetName, snapshots);
-        new Notice(t('EXECUTED_MSG', rulesetName, count));
+        const count = await this.modifyFile(file, job, snapshots);
+        this.rememberRun(job.name, snapshots);
+        new Notice(t('EXECUTED_MSG', job.name, count));
     }
 
-    async applyRulesetToFiles(files: TFile[], rulesetName: string) {
-        const ruleText = this.settings.rulesets[rulesetName];
-        if (ruleText === undefined) return;
-
+    async applyJobToFiles(files: TFile[], job: QuickJob) {
         const snapshots: FileSnapshot[] = [];
         let totalCount = 0;
+        // Awaited one file at a time, so no two files are ever rewritten at once.
         for (const file of files) {
-            totalCount += await this.modifyFile(file, ruleText, rulesetName, snapshots);
+            totalCount += await this.modifyFile(file, job, snapshots);
         }
-        this.rememberRun(rulesetName, snapshots);
-        new Notice(t('EXECUTED_MSG', rulesetName, totalCount));
+        this.rememberRun(job.name, snapshots);
+        new Notice(t('EXECUTED_MSG', job.name, totalCount));
     }
 
-    async applyRulesetToFolder(folder: TFolder, rulesetName: string) {
-        const ruleText = this.settings.rulesets[rulesetName];
-        if (ruleText === undefined) return;
-
+    async applyJobToFolder(folder: TFolder, job: QuickJob) {
         const files: TFile[] = [];
         Vault.recurseChildren(folder, (f) => {
             if (f instanceof TFile && f.extension === "md") files.push(f);
@@ -370,18 +417,18 @@ export default class RegexQuickActions extends Plugin {
         const snapshots: FileSnapshot[] = [];
         let totalCount = 0;
         for (const file of files) {
-            totalCount += await this.modifyFile(file, ruleText, rulesetName, snapshots);
+            totalCount += await this.modifyFile(file, job, snapshots);
         }
-        this.rememberRun(rulesetName, snapshots);
-        new Notice(t('EXECUTED_MSG', rulesetName, totalCount));
+        this.rememberRun(job.name, snapshots);
+        new Notice(t('EXECUTED_MSG', job.name, totalCount));
     }
 
     /**
-     * Applies a ruleset to one file and, when the content actually changed, appends a
-     * snapshot of it to `snapshots`. Files the ruleset leaves untouched are not written
+     * Applies a job to one file and, when the content actually changed, appends a
+     * snapshot of it to `snapshots`. Files the job leaves untouched are not written
      * back at all, so a folder-wide run does not bump the mtime of every note in it.
      */
-    private async modifyFile(file: TFile, ruleText: string, rulesetName: string, snapshots: FileSnapshot[]): Promise<number> {
+    private async modifyFile(file: TFile, job: QuickJob, snapshots: FileSnapshot[]): Promise<number> {
         const activeView = this.app.workspace.getActiveViewOfType(MarkdownView);
 
         if (activeView && activeView.file?.path === file.path) {
@@ -390,7 +437,7 @@ export default class RegexQuickActions extends Plugin {
             const cursor = editor.getCursor();
 
             const before = editor.getValue();
-            const result = this.processRegex(before, ruleText, rulesetName);
+            const result = this.processJob(before, job);
             if (before === result.content) return result.count;
 
             editor.setValue(result.content);
@@ -400,13 +447,30 @@ export default class RegexQuickActions extends Plugin {
             return result.count;
         } else {
             const before = await this.app.vault.read(file);
-            const result = this.processRegex(before, ruleText, rulesetName);
+            const result = this.processJob(before, job);
             if (before === result.content) return result.count;
 
             await this.app.vault.modify(file, result.content);
             snapshots.push({ path: file.path, before, after: result.content });
             return result.count;
         }
+    }
+
+    /**
+     * Runs every step of a job over the text, each one on the output of the one before.
+     * This is deliberately synchronous: a step cannot begin before its predecessor has
+     * returned, so the steps of a sequence can never interleave or race each other, and
+     * the file is read once up front and written once at the end.
+     */
+    private processJob(subject: string, job: QuickJob): { content: string, count: number } {
+        let content = subject;
+        let count = 0;
+        for (const ruleText of job.steps) {
+            const result = this.processRegex(content, ruleText, job.name);
+            content = result.content;
+            count += result.count;
+        }
+        return { content, count };
     }
 
     /**
@@ -499,12 +563,7 @@ export default class RegexQuickActions extends Plugin {
         return { content: output, count };
     }
 
-    async applyRuleset(rulesetName: string, editor?: Editor) {
-        const ruleText = this.settings.rulesets[rulesetName];
-        if (ruleText === undefined) {
-            new Notice(rulesetName + t('NOT_FOUND_ERR'));
-            return;
-        }
+    async applyJob(job: QuickJob, editor?: Editor) {
         if (!editor) {
             const activeMarkdownView = this.app.workspace.getActiveViewOfType(MarkdownView);
             if (!activeMarkdownView) return;
@@ -520,7 +579,7 @@ export default class RegexQuickActions extends Plugin {
         const before = useSelection ? editor.getValue() : subject;
 
         const pos = editor.getScrollInfo();
-        const result = this.processRegex(subject, ruleText, rulesetName);
+        const result = this.processJob(subject, job);
         if (useSelection) {
             const from = editor.getCursor('from');
             editor.replaceSelection(result.content);
@@ -533,7 +592,7 @@ export default class RegexQuickActions extends Plugin {
         editor.scrollTo(0, pos.top);
 
         const after = editor.getValue();
-        this.rememberRun(rulesetName, path && after !== before ? [{ path, before, after }] : []);
-        new Notice(t('EXECUTED_MSG', rulesetName, result.count));
+        this.rememberRun(job.name, path && after !== before ? [{ path, before, after }] : []);
+        new Notice(t('EXECUTED_MSG', job.name, result.count));
     }
 }
