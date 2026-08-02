@@ -5,7 +5,7 @@
   "main": "main.js",
   "scripts": {
     "dev": "rollup -c -w",
-    "build": "rollup -c",
+    "build": "tsc -noEmit -skipLibCheck && rollup -c",
     "lint": "eslint .",
     "fix": "eslint . --fix"
   },
@@ -24,10 +24,15 @@
     "eslint": "^9.39.2",
     "eslint-plugin-obsidianmd": "^0.4.1",
     "globals": "^16.5.0",
-    "obsidian": "https://github.com/obsidianmd/obsidian-api/tarball/master",
+    "obsidian": "1.13.1",
     "rollup": "^2.32.1",
     "tslib": "^2.0.3",
     "typescript": "^4.0.3",
     "typescript-eslint": "^8.56.0"
+  },
+  "overrides": {
+    "eslint-plugin-obsidianmd": {
+      "obsidian": "$obsidian"
+    }
   }
 }
