@@ -21,6 +21,8 @@ Regex Quick Actions is a continuation of the idea of [Regex Pipeline](https://gi
 
 2. Set a default action for quick use.
 
+3. Apply actions to selected text only. Turn on "Apply quick actions to selected text" in the plugin settings: after that, any action run from the command palette, a hotkey or the note context menu is applied only to the current selection. If nothing is selected, the action is applied to the whole note. Actions run from the file or folder context menu always apply to whole files.
+
 
 ## Installation
 

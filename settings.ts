@@ -81,20 +81,35 @@ export class RegexQuickActionsSettingsTab extends PluginSettingTab {
                 type: 'group',
                 cls: 'orp-settings-group',
                 heading: t('GENERAL_SECTION_HEADER'),
-                items: [{
-                    name: t('CONFIRM_FOLDER_ACTION'),
-                    desc: t('CONFIRM_FOLDER_ACTION_DESC'),
-                    aliases: [t('FOLDER_ACTION_CONFIRM_TITLE'), t('RUN_DEFAULT_ON_FOLDER')],
-                    // Name and desc are applied to the row by Obsidian before render runs.
-                    render: (setting) => {
-                        setting.addToggle(toggle => toggle
-                            .setValue(this.plugin.settings.confirmFolderAction)
-                            .onChange(async (value) => {
-                                this.plugin.settings.confirmFolderAction = value;
-                                await this.plugin.saveSettings();
-                            }));
+                items: [
+                    {
+                        name: t('APPLY_TO_SELECTION'),
+                        desc: t('APPLY_TO_SELECTION_DESC'),
+                        aliases: [t('RUN_QUICK_ACTION'), t('APPLY_TO_SELECTION_ALIAS')],
+                        render: (setting) => {
+                            setting.addToggle(toggle => toggle
+                                .setValue(this.plugin.settings.applyToSelection)
+                                .onChange(async (value) => {
+                                    this.plugin.settings.applyToSelection = value;
+                                    await this.plugin.saveSettings();
+                                }));
+                        }
+                    },
+                    {
+                        name: t('CONFIRM_FOLDER_ACTION'),
+                        desc: t('CONFIRM_FOLDER_ACTION_DESC'),
+                        aliases: [t('FOLDER_ACTION_CONFIRM_TITLE'), t('RUN_DEFAULT_ON_FOLDER')],
+                        // Name and desc are applied to the row by Obsidian before render runs.
+                        render: (setting) => {
+                            setting.addToggle(toggle => toggle
+                                .setValue(this.plugin.settings.confirmFolderAction)
+                                .onChange(async (value) => {
+                                    this.plugin.settings.confirmFolderAction = value;
+                                    await this.plugin.saveSettings();
+                                }));
+                        }
                     }
-                }]
+                ]
             },
             {
                 type: 'group',

@@ -39,6 +39,9 @@ export default {
     RUN_QUICK_ACTION: "Run quick action",
     CONFIRM_FOLDER_ACTION: "Confirmation for quick action on folder",
     CONFIRM_FOLDER_ACTION_DESC: "Show a confirmation dialog before running quick action on every file inside a chosen folder.",
+    APPLY_TO_SELECTION: "Apply quick actions to selected text",
+    APPLY_TO_SELECTION_DESC: "When text is selected in the editor, run quick actions on that selection only instead of the whole note. With nothing selected, the whole note is used as before. Actions run from the file or folder context menu always apply to whole files.",
+    APPLY_TO_SELECTION_ALIAS: "selection",
 
     /* Errors and messages */
 

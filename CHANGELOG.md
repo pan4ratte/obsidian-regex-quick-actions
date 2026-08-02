@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.1.0
+
+### New features
+
+* Quick actions can now be applied to selected text only. The new "Apply quick actions to selected text" setting is off by default; with it on, actions run from the command palette, a hotkey or the note context menu affect only the current selection, and the rewritten fragment stays selected so several actions can be chained on it.
+
+
 ## 2.0.0
 
 ### Major update: Obsidian 1.13 settings

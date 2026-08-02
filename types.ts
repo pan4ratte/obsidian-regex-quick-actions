@@ -14,11 +14,13 @@ export interface RegexQuickActionsSettings {
     rulesets: Record<string, string>;
     defaultRule: string | null;
     confirmFolderAction: boolean;
+    applyToSelection: boolean;
 }
 
 export const DEFAULT_SETTINGS: RegexQuickActionsSettings = {
     rules: [],
     rulesets: {},
     defaultRule: null,
-    confirmFolderAction: true
+    confirmFolderAction: true,
+    applyToSelection: false
 };

@@ -370,12 +370,22 @@ export default class RegexQuickActions extends Plugin {
             editor = activeMarkdownView.editor;
         }
 
-        const subject = editor.somethingSelected() ? editor.getSelection() : editor.getValue();
+        // Selection scoping is opt-in: with the setting off, or with nothing selected,
+        // the action keeps applying to the whole note.
+        const useSelection = this.settings.applyToSelection && editor.somethingSelected();
+        const subject = useSelection ? editor.getSelection() : editor.getValue();
 
         const pos = editor.getScrollInfo();
         const result = this.processRegex(subject, ruleText, rulesetName);
-        if (editor.somethingSelected()) editor.replaceSelection(result.content);
-        else editor.setValue(result.content);
+        if (useSelection) {
+            const from = editor.getCursor('from');
+            editor.replaceSelection(result.content);
+            // replaceSelection collapses the selection to the end of the inserted text;
+            // re-select it so further actions can be chained on the same fragment.
+            editor.setSelection(from, editor.getCursor());
+        } else {
+            editor.setValue(result.content);
+        }
         editor.scrollTo(0, pos.top);
         new Notice(t('EXECUTED_MSG', rulesetName, result.count));
     }
