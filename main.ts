@@ -4,6 +4,43 @@ import { t } from './i18n';
 import { CommandApp, DEFAULT_SETTINGS, RegexQuickActionsSettings } from './types';
 import { ConfirmationModal, RegexQuickActionsSettingsTab } from './settings';
 
+/**
+ * Expands a replacement string ($1, $&, $<name>, ...) against the arguments
+ * String.replace() hands to a replacer function, mirroring what replace()
+ * would have produced with that string directly. Needed so a rule can tell
+ * whether a match was actually changed or replaced with itself.
+ */
+function expandReplacement(replacement: string, args: unknown[]): string {
+    const hasNamedGroups = typeof args[args.length - 1] === 'object';
+    const tail = hasNamedGroups ? 3 : 2;
+    const groups = (hasNamedGroups ? args[args.length - 1] : undefined) as Record<string, string | undefined> | undefined;
+    const subject = args[args.length - tail + 1] as string;
+    const offset = args[args.length - tail] as number;
+    const match = args[0] as string;
+    const captures = args.slice(1, args.length - tail) as (string | undefined)[];
+
+    return replacement.replace(/\$(\$|&|`|'|<[^>]*>|\d{1,2})/g, (token, selector: string) => {
+        switch (selector[0]) {
+            case '$': return '$';
+            case '&': return match;
+            case '`': return subject.slice(0, offset);
+            case "'": return subject.slice(offset + match.length);
+            case '<': return groups ? (groups[selector.slice(1, -1)] ?? '') : token;
+            default: {
+                let index = parseInt(selector, 10);
+                let trailing = '';
+                // $12 with fewer than 12 groups falls back to group 1 followed by "2"
+                if (index > captures.length && selector.length === 2) {
+                    index = parseInt(selector[0], 10);
+                    trailing = selector[1];
+                }
+                if (index < 1 || index > captures.length) return token;
+                return (captures[index - 1] ?? '') + trailing;
+            }
+        }
+    });
+}
+
 export default class RegexQuickActions extends Plugin {
     settings: RegexQuickActionsSettings;
 
@@ -308,8 +345,12 @@ export default class RegexQuickActions extends Plugin {
             const [ , pattern, flags, replacement, mode ] = ruleMatches;
             try {
                 const matchRule = new RegExp(pattern, flags || 'gm');
-                count += output.match(matchRule)?.length ?? 0;
-                output = mode === 'x' ? output.replace(matchRule, '') : output.replace(matchRule, replacement);
+                output = output.replace(matchRule, (...args) => {
+                    const match = args[0];
+                    const result = mode === 'x' ? '' : expandReplacement(replacement, args);
+                    if (result !== match) count++;
+                    return result;
+                });
             } catch (e) {
                 console.error(`Regex Quick Actions: Invalid Regex in ${rulesetName}`, e);
             }
