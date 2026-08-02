@@ -392,3 +392,63 @@
     width: var(--icon-s);
     height: var(--icon-s);
 }
+
+/* ==========================================================================
+   Narrow layouts
+
+   Every side-by-side row above collapses to a single column once its card runs
+   out of room — on a phone, but also in a narrowed desktop window or a split
+   pane. The breakpoints are container queries rather than media queries because
+   what decides the layout is the width of the card, not the width of the screen;
+   each card is therefore its own query container.
+
+   ORDERING: these rules re-assert row styles set further up the file, several at
+   equal specificity, so the section has to stay last.
+   ========================================================================== */
+
+.orp-creation-row,
+.orp-saved-rule-item,
+.orp-settings-group .setting-item.orp-stacked-row {
+    container-type: inline-size;
+}
+
+/* Export/import, and add sequence/add action: one button per line. `flex` is
+   reset because in a column it would stretch the buttons vertically instead. */
+@container (max-width: 360px) {
+    .orp-stacked-row > .setting-item-control {
+        flex-direction: column;
+        align-items: stretch;
+        gap: var(--size-4-2);
+    }
+
+    .orp-stacked-row > .setting-item-control button {
+        flex: 0 0 auto;
+    }
+}
+
+/* Regex, flags and replacement: one field per line, each taking the full width
+   — including the flags field, whose fixed 80px only makes sense beside them. */
+@container (max-width: 460px) {
+    .orp-fields-row {
+        flex-direction: column;
+    }
+
+    .orp-flags-field {
+        flex: 1 1 auto;
+    }
+}
+
+/* Default toggle on its own line above the buttons, which then split the line
+   between them. Sequence cards have no toggle, but their buttons match. */
+@container (max-width: 380px) {
+    .orp-creation-actions {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 12px;
+    }
+
+    .orp-action-buttons > button,
+    .orp-sequence-actions > button {
+        flex: 1;
+    }
+}
