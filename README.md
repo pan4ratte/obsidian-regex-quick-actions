@@ -23,7 +23,9 @@ Regex Quick Actions is a continuation of the idea of [Regex Pipeline](https://gi
 
 3. Apply actions to selected text only. Turn on "Apply quick actions to selected text" in the plugin settings: after that, any action run from the command palette, a hotkey or the note context menu is applied only to the current selection. If nothing is selected, the action is applied to the whole note. Actions run from the file or folder context menu always apply to whole files.
 
-4. Revert the last quick action with the "Revert last quick action" command from the command palette. It undoes the most recent run as a whole, including runs over several files or over a whole folder, and it is a single step back rather than a history of them. A file is left untouched if it was edited after the action ran, so your later edits are never overwritten. The undo data is kept in memory only: it is lost when Obsidian is restarted or the plugin is reloaded.
+4. Export and import quick actions with the "Backup and restore actions" option at the bottom of the "General" section of the plugin settings. Export saves all your actions to a JSON file; it is available on desktop only, because the mobile app cannot save a file this way. Import adds the actions from such a file and never overwrites what you already have: an imported action whose name is already taken is added under a new name, and an action that is already present is skipped.
+
+5. Revert the last quick action with the "Revert last quick action" command from the command palette. It undoes the most recent run as a whole, including runs over several files or over a whole folder, and it is a single step back rather than a history of them. A file is left untouched if it was edited after the action ran, so your later edits are never overwritten. The undo data is kept in memory only: it is lost when Obsidian is restarted or the plugin is reloaded.
 
 
 ## Installation
@@ -53,7 +55,7 @@ If you want to test beta-versions of the plugin or use previous versions, you ca
 
 - [x] ~~Add Russian language translation.~~
 
-- [ ] Add settings export/import feature.
+- [x] ~~Add settings export/import feature.~~
 
 
 ## About the Author

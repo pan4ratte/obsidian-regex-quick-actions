@@ -195,3 +195,32 @@
 .orp-settings-anchor > .setting-item-control {
     display: none;
 }
+
+/* Rows whose controls belong under the text rather than beside it: `block` stacks
+   the info and control blocks, and the control block then fills the row and packs
+   its buttons to the left instead of the stock right edge. */
+.orp-settings-group .setting-item.orp-stacked-row {
+    display: block;
+}
+
+.orp-stacked-row > .setting-item-control {
+    width: 100%;
+    margin-top: var(--size-4-3);
+    justify-content: flex-start;
+}
+
+/* Icon-plus-label buttons: setIcon leaves a bare svg, so lay the button out as a
+   row and size the icon, which otherwise inherits the button's font size. The
+   buttons share the row's full width in equal parts. */
+.orp-stacked-row > .setting-item-control button {
+    flex: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--size-4-2);
+}
+
+.orp-stacked-row > .setting-item-control button .svg-icon {
+    width: var(--icon-s);
+    height: var(--icon-s);
+}

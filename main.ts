@@ -1,7 +1,7 @@
 import { Editor, MarkdownView, Menu, MenuItem, Notice, Plugin, TAbstractFile, TFile, TFolder, Vault } from 'obsidian';
 
 import { t } from './i18n';
-import { CommandApp, DEFAULT_SETTINGS, FileSnapshot, LastRun, MAX_REVERT_CHARS, RegexQuickActionsSettings } from './types';
+import { CommandApp, DEFAULT_SETTINGS, FileSnapshot, ImportResult, LastRun, MAX_REVERT_CHARS, RegexQuickActionsSettings, RulesetEntry } from './types';
 import { ConfirmationModal, RegexQuickActionsSettingsTab } from './settings';
 
 /**
@@ -280,6 +280,51 @@ export default class RegexQuickActions extends Plugin {
             }
         }
         await this.saveSettings();
+    }
+
+    /** Finds an existing action by name, matching the way command ids collapse case. */
+    private findRuleName(name: string): string | undefined {
+        return this.settings.rules.find(rule => rule.toLowerCase() === name.toLowerCase());
+    }
+
+    /**
+     * Merges an imported action set into the current one without ever overwriting: an
+     * entry whose name is taken is added under a free name, and an entry that is already
+     * present verbatim is skipped. `defaultRule` is only adopted when this vault has none.
+     */
+    async importRulesets(entries: RulesetEntry[], defaultRule: string | null): Promise<ImportResult> {
+        const result: ImportResult = { added: 0, renamed: 0, skipped: 0 };
+
+        // Reversed because createRuleset-style insertion puts each action on top of the
+        // list; walking backwards leaves the imported set in its original order.
+        for (const entry of [...entries].reverse()) {
+            const existing = this.findRuleName(entry.name);
+            if (existing !== undefined && this.settings.rulesets[existing] === entry.content) {
+                result.skipped++;
+                continue;
+            }
+
+            let name = entry.name;
+            if (existing !== undefined) {
+                let suffix = 2;
+                while (this.findRuleName(`${entry.name} (${suffix})`)) suffix++;
+                name = `${entry.name} (${suffix})`;
+                result.renamed++;
+            } else {
+                result.added++;
+            }
+
+            this.settings.rules.unshift(name);
+            this.settings.rulesets[name] = entry.content;
+            this.addRuleCommand(name);
+        }
+
+        if (this.settings.defaultRule === null && defaultRule) {
+            this.settings.defaultRule = this.findRuleName(defaultRule) ?? null;
+        }
+
+        await this.saveSettings();
+        return result;
     }
 
     async deleteRuleset(name: string): Promise<void> {

@@ -9,6 +9,8 @@ export default {
     /* Generic buttons */
 
     ADD: "Add",
+    EXPORT: "Export",
+    IMPORT: "Import",
     SAVE: "Save",
     CANCEL: "Cancel",
     YES: "Yes",
@@ -43,6 +45,9 @@ export default {
     APPLY_TO_SELECTION: "Apply quick actions to selected text",
     APPLY_TO_SELECTION_DESC: "When text is selected in the editor, run quick actions on that selection only instead of the whole note. With nothing selected, the whole note is used as before. Actions run from the file or folder context menu always apply to whole files.",
     APPLY_TO_SELECTION_ALIAS: "selection",
+    EXPORT_IMPORT: "Backup and restore actions",
+    EXPORT_IMPORT_DESC: "Save all quick actions to a JSON file, or add them from one. Nothing is overwritten.",
+    EXPORT_MOBILE_UNAVAILABLE: "Export is desktop only.",
 
     /* Errors and messages */
 
@@ -56,5 +61,12 @@ export default {
     NOTHING_TO_REVERT: "There is no quick action to revert.",
     REVERTED_MSG: "Reverted '{}' in {} files.",
     REVERTED_PARTIAL_MSG: "Reverted '{}' in {} files. Skipped files: {} — they were changed after the quick action ran.",
-    REVERT_TOO_LARGE: "This run changed too much text to keep in memory, so it cannot be reverted."
+    REVERT_TOO_LARGE: "This run changed too much text to keep in memory, so it cannot be reverted.",
+    EXPORT_EMPTY_ERR: "There are no quick actions to export.",
+    EXPORT_DONE_MSG: "Exported {} quick actions.",
+    IMPORT_READ_ERR: "Error: Could not read the selected file!",
+    IMPORT_PARSE_ERR: "Error: The selected file is not valid JSON!",
+    IMPORT_INVALID_ERR: "Error: The selected file is not a quick actions export!",
+    IMPORT_EMPTY_ERR: "The selected file contains no valid quick actions.",
+    IMPORT_DONE_MSG: "Import finished. Added: {}, renamed because of a name conflict: {}, skipped as already present: {}."
 };

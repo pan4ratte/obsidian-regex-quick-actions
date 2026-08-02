@@ -5,6 +5,7 @@
 ### New features
 
 * Quick actions can now be applied to selected text only. The new "Apply quick actions to selected text" setting is off by default; with it on, actions run from the command palette, a hotkey or the note context menu affect only the current selection, and the rewritten fragment stays selected so several actions can be chained on it.
+* Quick actions can now be exported and imported through the new "Backup and restore actions" option at the bottom of the "General" settings section. Export saves every action to a JSON file and is available on desktop only, as the mobile app cannot save files this way. Import is available everywhere and never overwrites existing actions: a name conflict is resolved by adding the imported action under a new name, and an action that is already present is skipped.
 * The new "Revert last quick action" palette command undoes the most recent run, including runs over several files or over a whole folder. Files edited after the run are skipped instead of being overwritten. The undo data lives in memory only and is lost on restart, and only the latest run can be reverted.
 
 ### UI/UX enhancements and bug fixes

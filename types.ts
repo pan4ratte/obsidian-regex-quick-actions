@@ -9,6 +9,19 @@ export interface CommandApp extends App {
     };
 }
 
+/** A single quick action as it travels through an export file. */
+export interface RulesetEntry {
+    name: string;
+    content: string;
+}
+
+/** What an import did to the existing action set, for reporting back to the user. */
+export interface ImportResult {
+    added: number;
+    renamed: number;
+    skipped: number;
+}
+
 /**
  * Content of a single file captured around a quick action run. `after` is kept so a
  * revert can tell whether the file still holds what the action left behind.

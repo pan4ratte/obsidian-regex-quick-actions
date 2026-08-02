@@ -1,6 +1,7 @@
-import { App, ButtonComponent, Modal, PluginSettingTab, Setting, SettingDefinitionItem, ToggleComponent, Notice } from 'obsidian';
+import { App, ButtonComponent, Modal, Platform, PluginSettingTab, Setting, SettingDefinitionItem, ToggleComponent, Notice } from 'obsidian';
 import { t } from './i18n';
 import type RegexQuickActions from './main';
+import type { RulesetEntry } from './types';
 
 export class ConfirmationModal extends Modal {
     constructor(
@@ -107,6 +108,30 @@ export class RegexQuickActionsSettingsTab extends PluginSettingTab {
                                     this.plugin.settings.confirmFolderAction = value;
                                     await this.plugin.saveSettings();
                                 }));
+                        }
+                    },
+                    {
+                        name: t('EXPORT_IMPORT'),
+                        // Export writes a file through a download, which the mobile app has
+                        // no way to handle, so the row says so and the button is disabled.
+                        desc: Platform.isMobile
+                            ? `${t('EXPORT_IMPORT_DESC')} ${t('EXPORT_MOBILE_UNAVAILABLE')}`
+                            : t('EXPORT_IMPORT_DESC'),
+                        aliases: [t('EXPORT'), t('IMPORT')],
+                        render: (setting) => {
+                            // Drops the buttons onto their own line under the text; see styles.css.
+                            setting.settingEl.addClass('orp-stacked-row');
+                            setting.addButton(btn => {
+                                this.labelIconButton(btn, 'upload', t('EXPORT'));
+                                btn.onClick(() => this.exportQuickActions());
+                                if (Platform.isMobile) {
+                                    btn.setDisabled(true).setTooltip(t('EXPORT_MOBILE_UNAVAILABLE'));
+                                }
+                            });
+                            setting.addButton(btn => {
+                                this.labelIconButton(btn, 'download', t('IMPORT'));
+                                btn.onClick(() => this.pickImportFile());
+                            });
                         }
                     }
                 ]
@@ -350,6 +375,122 @@ export class RegexQuickActionsSettingsTab extends PluginSettingTab {
         await this.plugin.updateRuleset(oldName, this.tempName, content);
         this.editingRule = null;
         this.rerender();
+    }
+
+    /**
+     * Gives a button a Lucide icon followed by its label. The label is appended to the
+     * element instead of going through setButtonText, which would drop the icon.
+     */
+    private labelIconButton(btn: ButtonComponent, icon: string, label: string) {
+        btn.setIcon(icon);
+        btn.buttonEl.createSpan({ text: label });
+    }
+
+    /** Hands the whole action set to the user as a JSON download. Desktop only. */
+    private exportQuickActions() {
+        const { rules, rulesets, defaultRule } = this.plugin.settings;
+        if (rules.length === 0) {
+            new Notice(t('EXPORT_EMPTY_ERR'));
+            return;
+        }
+
+        const payload = {
+            plugin: this.plugin.manifest.id,
+            version: this.plugin.manifest.version,
+            exportedAt: new Date().toISOString(),
+            defaultRule,
+            rules,
+            rulesets
+        };
+
+        const url = URL.createObjectURL(new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' }));
+        const link = activeDocument.body.createEl('a', {
+            href: url,
+            attr: { download: `regex-quick-actions-${new Date().toISOString().slice(0, 10)}.json` }
+        });
+        link.click();
+        link.remove();
+        URL.revokeObjectURL(url);
+
+        new Notice(t('EXPORT_DONE_MSG', rules.length));
+    }
+
+    /** Opens the system file picker and imports whatever the user chooses. */
+    private pickImportFile() {
+        const input = createEl('input', { type: 'file', attr: { accept: 'application/json,.json' } });
+        input.addEventListener('change', () => {
+            const file = input.files?.[0];
+            if (file) void this.importQuickActions(file);
+        });
+        input.click();
+    }
+
+    private async importQuickActions(file: File) {
+        let raw: string;
+        try {
+            raw = await file.text();
+        } catch {
+            new Notice(t('IMPORT_READ_ERR'));
+            return;
+        }
+
+        let data: unknown;
+        try {
+            data = JSON.parse(raw);
+        } catch {
+            new Notice(t('IMPORT_PARSE_ERR'));
+            return;
+        }
+
+        const entries = this.readImportEntries(data);
+        if (!entries) {
+            new Notice(t('IMPORT_INVALID_ERR'));
+            return;
+        }
+        if (entries.length === 0) {
+            new Notice(t('IMPORT_EMPTY_ERR'));
+            return;
+        }
+
+        const defaultRule = this.readDefaultRule(data);
+        const result = await this.plugin.importRulesets(entries, defaultRule);
+        this.rerender();
+        new Notice(t('IMPORT_DONE_MSG', result.added, result.renamed, result.skipped));
+    }
+
+    /**
+     * Pulls the usable actions out of a parsed export file. Returns null when the file is
+     * not an export at all; entries that are malformed or unparseable as a rule are
+     * dropped, so one bad action cannot block the rest of the import.
+     */
+    private readImportEntries(data: unknown): RulesetEntry[] | null {
+        if (typeof data !== 'object' || data === null) return null;
+
+        const { rules, rulesets } = data as { rules?: unknown, rulesets?: unknown };
+        if (typeof rulesets !== 'object' || rulesets === null || Array.isArray(rulesets)) return null;
+
+        const map = rulesets as Record<string, unknown>;
+        // `rules` carries the display order; anything only present in `rulesets` is appended.
+        const ordered = Array.isArray(rules) ? rules.filter((name): name is string => typeof name === 'string') : [];
+        const names = [
+            ...ordered.filter(name => name in map),
+            ...Object.keys(map).filter(name => !ordered.includes(name))
+        ];
+
+        const entries: RulesetEntry[] = [];
+        for (const name of names) {
+            const content = map[name];
+            const trimmed = name.trim();
+            if (!trimmed || typeof content !== 'string') continue;
+            if (!this.parseRuleContent(content).pattern) continue;
+            entries.push({ name: trimmed, content });
+        }
+        return entries;
+    }
+
+    private readDefaultRule(data: unknown): string | null {
+        const value = (data as { defaultRule?: unknown }).defaultRule;
+        return typeof value === 'string' ? value : null;
     }
 
     private parseRuleContent(content: string) {
