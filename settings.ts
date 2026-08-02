@@ -246,8 +246,11 @@ export class SequenceModal extends Modal {
     }
 }
 
+type ManagerTab = 'actions' | 'sequences';
+
 export class RegexQuickActionsSettingsTab extends PluginSettingTab {
     plugin: RegexQuickActions;
+    activeTab: ManagerTab = 'actions';
     showCreationForm = false;
     editingRule: string | null = null;
     tempName = "";
@@ -356,7 +359,8 @@ export class RegexQuickActionsSettingsTab extends PluginSettingTab {
                     name: t('ADD_QUICK_ACTION'),
                     aliases: [
                         t('MANAGE_SECTION_HEADER'), t('ACTION_NAME'), t('SEARCH_REGEX'),
-                        t('FLAGS'), t('REPLACEMENT'), t('SET_AS_DEFAULT'), t('EDIT'), t('DELETE')
+                        t('FLAGS'), t('REPLACEMENT'), t('SET_AS_DEFAULT'), t('EDIT'), t('DELETE'),
+                        t('TAB_SEQUENCES'), t('ADD_SEQUENCE')
                     ],
                     render: (setting) => {
                         const root = this.acquireRoot(setting, 'orp-settings-root');
@@ -391,33 +395,98 @@ export class RegexQuickActionsSettingsTab extends PluginSettingTab {
 
     private renderManager(root: HTMLElement) {
         root.empty();
+        // The strip and the tab's "new item" row are two halves of one bordered card,
+        // which is why they share a parent; everything else goes in the panel below it.
+        const card = root.createDiv({ cls: 'orp-tab-card' });
+        this.renderTabs(card);
+        const panel = root.createDiv({ cls: 'orp-tab-panel', attr: { role: 'tabpanel' } });
+        if (this.activeTab === 'actions') this.renderActionsTab(card, panel);
+        else this.renderSequencesTab(card, panel);
+    }
 
-        // Same stacked, two-button layout as the backup and restore option, but with no
-        // name or description of its own: the buttons say what they do.
-        const createRow = new Setting(root);
-        createRow.settingEl.addClass('orp-stacked-row', 'orp-buttons-only');
-        createRow.addButton(btn => {
-            this.labelIconButton(btn, 'list-ordered', t('ADD_SEQUENCE'));
-            btn.onClick(() => {
-                if (this.plugin.settings.rules.length === 0) {
-                    new Notice(t('SEQUENCE_NEEDS_ACTIONS_ERR'));
-                    return;
-                }
-                new SequenceModal(this.app, this.plugin, null, () => this.rerender()).open();
+    /**
+     * Redraws the manager with the settings pane left where it was. Rebuilding the panel
+     * costs it its scroll position, so it is read before the redraw and written back after.
+     */
+    private rerenderInPlace() {
+        const scroller = this.findScroller(this.managerRootEl);
+        const top = scroller?.scrollTop ?? 0;
+        this.rerender();
+        if (scroller) scroller.scrollTop = top;
+    }
+
+    /**
+     * The pane that actually scrolls around the manager: the settings dialog's content
+     * area on desktop, the tab body on mobile. Returns null when nothing scrolls yet.
+     */
+    private findScroller(el: HTMLElement | null): HTMLElement | null {
+        for (let node = el?.parentElement ?? null; node; node = node.parentElement) {
+            const overflowY = getComputedStyle(node).overflowY;
+            const scrolls = overflowY === 'auto' || overflowY === 'scroll';
+            if (scrolls && node.scrollHeight > node.clientHeight) return node;
+        }
+        return null;
+    }
+
+    /**
+     * The tab strip over the two saved lists. Switching tabs drops any half-finished
+     * creation or edit, since the form it belongs to is about to leave the screen.
+     */
+    private renderTabs(root: HTMLElement) {
+        const bar = root.createDiv({ cls: 'orp-tabs', attr: { role: 'tablist' } });
+        const tabs: { id: ManagerTab, label: string, short: string, count: number }[] = [
+            {
+                id: 'actions',
+                label: t('TAB_ACTIONS'),
+                short: t('TAB_ACTIONS_SHORT'),
+                count: this.plugin.settings.rules.length
+            },
+            {
+                id: 'sequences',
+                label: t('TAB_SEQUENCES'),
+                short: t('TAB_SEQUENCES_SHORT'),
+                count: this.plugin.settings.sequences.length
+            }
+        ];
+
+        for (const { id, label, short, count } of tabs) {
+            const isActive = this.activeTab === id;
+            const tab = bar.createEl('button', {
+                cls: isActive ? 'orp-tab is-active' : 'orp-tab',
+                attr: { role: 'tab', 'aria-selected': String(isActive) }
             });
-        });
-        createRow.addButton(btn => {
-            this.labelIconButton(btn, 'plus', t('ADD_QUICK_ACTION'));
-            btn.onClick(() => {
+            // Both labels are rendered and CSS picks one, so the swap happens with the
+            // width of the card rather than of the screen; see the narrow layouts section.
+            tab.createSpan({ text: label, cls: 'orp-tab-label' });
+            tab.createSpan({ text: short, cls: 'orp-tab-label-short' });
+            tab.createSpan({ text: String(count), cls: 'orp-tab-count' });
+            tab.onclick = () => {
+                if (isActive) return;
+                this.activeTab = id;
                 this.resetTempFields();
-                this.showCreationForm = !this.showCreationForm;
-                this.rerender();
-            });
+                this.showCreationForm = false;
+                this.rerenderInPlace();
+            };
+        }
+    }
+
+    /** The saved quick actions, with the inline creation form above them. */
+    private renderActionsTab(card: HTMLElement, root: HTMLElement) {
+        this.renderCreateRow(card, t('ADD_QUICK_ACTION'), () => {
+            this.resetTempFields();
+            this.showCreationForm = !this.showCreationForm;
+            this.rerender();
         });
 
         if (this.showCreationForm) {
             const formContainer = root.createEl("div", { cls: "orp-creation-row" });
             this.renderFormFields(formContainer, () => this.handleSave());
+        }
+
+        if (this.plugin.settings.rules.length === 0) {
+            // The open form already says what the tab is for, so the hint would only repeat it.
+            if (!this.showCreationForm) this.renderEmptyState(root, t('NO_ACTIONS_YET'));
+            return;
         }
 
         const listWrapper = root.createEl("div", { cls: "orp-saved-list" });
@@ -466,18 +535,25 @@ export class RegexQuickActionsSettingsTab extends PluginSettingTab {
                 });
             }
         });
-
-        this.renderSequenceList(root);
     }
 
-    /** Saved sequences, listed under their own heading below the quick actions. */
-    private renderSequenceList(root: HTMLElement) {
+    /** The saved sequences. Building one is a modal, so this tab has no inline form. */
+    private renderSequencesTab(card: HTMLElement, root: HTMLElement) {
+        this.renderCreateRow(card, t('ADD_SEQUENCE'), () => {
+            if (this.plugin.settings.rules.length === 0) {
+                new Notice(t('SEQUENCE_NEEDS_ACTIONS_ERR'));
+                return;
+            }
+            new SequenceModal(this.app, this.plugin, null, () => this.rerender()).open();
+        });
+
         const sequences = this.plugin.settings.sequences;
-        if (sequences.length === 0) return;
+        if (sequences.length === 0) {
+            this.renderEmptyState(root, t('NO_SEQUENCES_YET'));
+            return;
+        }
 
-        root.createEl("div", { text: t('SEQUENCES_HEADER'), cls: "orp-list-heading" });
         const listWrapper = root.createEl("div", { cls: "orp-saved-list" });
-
         sequences.forEach(sequence => {
             const itemRow = listWrapper.createEl("div", { cls: "orp-saved-rule-item" });
             const nameWrap = itemRow.createEl("div", { cls: "orp-input-wrap orp-name-field" });
@@ -508,6 +584,26 @@ export class RegexQuickActionsSettingsTab extends PluginSettingTab {
                 ).open();
             });
         });
+    }
+
+    /**
+     * The tab's "new item" button, which is the whole row: no name or description of its
+     * own, and no chrome separating button from row — the button says what it does, and
+     * the entire row is its click target (see .orp-create-row). It goes into the card
+     * under the tab strip, whose lower half it is. Both tabs use the same plus icon:
+     * the row sits in the same place on either, and only the label differs.
+     */
+    private renderCreateRow(card: HTMLElement, label: string, onClick: () => void) {
+        const createRow = new Setting(card);
+        createRow.settingEl.addClass('orp-stacked-row', 'orp-buttons-only', 'orp-create-row');
+        createRow.addButton(btn => {
+            this.labelIconButton(btn, 'plus', label);
+            btn.onClick(onClick);
+        });
+    }
+
+    private renderEmptyState(root: HTMLElement, text: string) {
+        root.createDiv({ text, cls: 'orp-empty-list' });
     }
 
     private createDisplayField(parent: HTMLElement, label: string, val: string, cls: string) {

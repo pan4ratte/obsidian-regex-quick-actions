@@ -21,7 +21,7 @@ Regex Quick Actions is a continuation of the idea of [Regex Pipeline](https://gi
 
 2. Set a default action for quick use.
 
-3. Build action sequences: chains of quick actions that run one after another. Click "New action sequence" in the plugin settings, name the sequence and pick the quick actions it consists of; the order of the list is the order they run in, and you can rearrange it by dragging the rows (on mobile, with the up and down buttons). Every saved sequence becomes a command palette entry of its own and appears in the same context menus as ordinary quick actions. Each action in a sequence is applied to the result of the previous one, and a sequence never starts an action before the previous one has finished.
+3. Build action sequences: chains of quick actions that run one after another. Open the "Action sequences" tab in the plugin settings, click "New action sequence", name the sequence and pick the quick actions it consists of; the order of the list is the order they run in, and you can rearrange it by dragging the rows (on mobile, with the up and down buttons). Every saved sequence becomes a command palette entry of its own and appears in the same context menus as ordinary quick actions. Each action in a sequence is applied to the result of the previous one, and a sequence never starts an action before the previous one has finished.
 
 4. Apply actions to selected text only. Turn on "Apply quick actions to selected text" in the plugin settings: after that, any action run from the command palette, a hotkey or the note context menu is applied only to the current selection. If nothing is selected, the action is applied to the whole note. Actions run from the file or folder context menu always apply to whole files.
 

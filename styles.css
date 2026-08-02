@@ -143,15 +143,115 @@
     gap: 8px;
 }
 
-/* --- Action sequences --- */
-.orp-list-heading {
-    margin: 24px 0 8px;
-    color: var(--text-muted);
-    font-size: var(--font-smallest);
-    font-weight: var(--font-bold);
-    text-transform: uppercase;
+/* --- Tab strip over the saved quick actions and sequences --- */
+
+/* The card around both halves — the tab strip and the "new item" row under it (see
+   .orp-create-row). One element draws the outline for the pair, in the same tokens
+   as every other setting item, so there is no seam where two borders would meet and
+   no chance of the halves rounding differently. Neither half carries a border of its
+   own; `overflow: hidden` clips them to these corners, which is also what keeps a
+   hover fill from squaring off the card. */
+.orp-tab-card {
+    overflow: hidden;
+    margin-bottom: var(--size-4-2);
+    background-color: var(--setting-items-background);
+    border: 1px solid var(--setting-items-border-color);
+    border-radius: var(--setting-items-radius);
 }
 
+.orp-tabs {
+    display: flex;
+}
+
+/* The two tabs split the strip between them, so together they span its full width,
+   and their bottom borders meet into one rule across the card. The active tab
+   redraws its own segment of that rule in the accent colour, so the two thicknesses
+   have to match. */
+.orp-tab {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    box-shadow: none;
+    border: none;
+    background-color: transparent;
+    padding: 24px 0;
+    border-radius: 0;
+    border-bottom: 2px solid var(--background-modifier-border);
+    color: var(--text-muted);
+    font-size: var(--font-ui-small);
+    cursor: pointer;
+    transition: color 0.2s ease, border-color 0.2s ease, background-color 0.2s ease;
+}
+
+/* Only the outer corners are rounded, and to the card's own radius: the inner pair
+   would notch the seam between the two tabs when one of them is filled. */
+.orp-tab:first-child {
+    border-top-left-radius: var(--setting-items-radius);
+    background: transparent;
+    box-shadow: none;
+}
+
+.orp-tab:last-child {
+    border-top-right-radius: var(--setting-items-radius);
+    background: transparent;
+    box-shadow: none;
+}
+
+.orp-tab:hover {
+    background-color: var(--background-modifier-hover);
+    color: var(--text-normal);
+}
+
+.orp-tab.is-active {
+    color: var(--interactive-accent);
+    border-bottom-color: 2px solid var(--interactive-accent);
+    font-weight: var(--font-semibold);
+}
+
+/* Each tab carries both a full and a short label, one of which is hidden at any
+   time; the short pair takes over once the card narrows (see the narrow layouts
+   section). Neither wraps — a two-line label would change the height of the strip. */
+.orp-tab-label,
+.orp-tab-label-short {
+    white-space: nowrap;
+}
+
+.orp-tab-label-short {
+    display: none;
+}
+
+/* Item count, muted until its tab is the active one. */
+.orp-tab-count {
+    padding: 0 6px;
+    border-radius: var(--radius-s);
+    background-color: var(--background-modifier-border);
+    color: var(--text-muted);
+    font-size: var(--font-smallest);
+    font-weight: var(--font-normal);
+}
+
+.orp-tab.is-active .orp-tab-count {
+    background-color: var(--interactive-accent);
+    color: var(--text-on-accent);
+}
+
+/* A floor under the panel: without one, switching from a long list to a short one
+   shortens the page, and the settings pane — which cannot scroll past its own end —
+   is pulled upwards on its own, moving the strip out from under the pointer. */
+.orp-tab-panel {
+    min-height: 60vh;
+}
+
+.orp-empty-list {
+    padding: 24px 16px;
+    color: var(--text-muted);
+    font-size: var(--font-smallest);
+    text-align: center;
+}
+
+/* --- Action sequences --- */
 .orp-sequence-actions {
     display: flex;
     justify-content: flex-end;
@@ -370,6 +470,22 @@
     margin-top: 0;
 }
 
+/* The "new item" row is the bottom half of .orp-tab-card, so it contributes no chrome
+   of its own: no border, no rounding, and no bottom margin, which inside the card
+   would only push its own floor away from the button.
+
+   The row is the card's first `.setting-item`, so it also matches Obsidian's
+   `.setting-group .setting-item:not(.setting-item-heading):first-child`, which
+   rounds the top corners of a group's opening row. That selector is 0,4,0, so this
+   one carries the row's other two classes to reach 0,5,0 and settle it outright,
+   rather than tying and relying on stylesheet order against app.css or a theme. */
+.orp-settings-group .setting-item.orp-stacked-row.orp-buttons-only.orp-create-row {
+    border: none;
+    border-radius: 0;
+    margin-bottom: 0;
+    padding: 0;
+}
+
 /* Icon-plus-label buttons: setIcon leaves a bare svg, so lay the button out as a
    row and size the icon, which otherwise inherits the button's font size. The
    buttons share the row's full width in equal parts. */
@@ -386,6 +502,38 @@
 .orp-stacked-row > .setting-item-control button:not(:disabled):hover {
     background-color: var(--interactive-accent);
     color: var(--text-on-accent);
+}
+
+/* The create row holds one button, so the row IS the button: it hands its padding
+   to the button, which then covers the whole card and makes every point in it
+   clickable. Nothing is left to mark a button off from its row, so the chrome goes
+   too — including the rounding, which belongs to .orp-tab-card: the card's clipping
+   is what rounds this button's hover fill at the bottom corners.
+
+   ORDERING: these tie with the .orp-stacked-row button rules just above (0,3,1 and
+   0,4,1), so they have to stay below them. */
+.orp-create-row > .setting-item-control button {
+    width: 100%;
+    padding: 24px 0;
+    border: none;
+    box-shadow: none;
+    background-color: transparent;
+    border-radius: 0;
+    color: var(--text-muted);
+}
+
+/* Matches the tab strip's hover rather than the accent flood of the other stacked
+   rows: at full card size that flood reads as a state change, not a hover. */
+.orp-create-row > .setting-item-control button:not(:disabled):hover {
+    background-color: var(--background-modifier-hover);
+    color: var(--text-normal);
+}
+
+/* Dropping the box-shadow takes the stock focus ring with it; keyboard users need
+   the row's outline back. */
+.orp-create-row > .setting-item-control button:focus-visible {
+    outline: 2px solid var(--background-modifier-border-focus);
+    outline-offset: -2px;
 }
 
 .orp-stacked-row > .setting-item-control button .svg-icon {
@@ -408,8 +556,24 @@
 
 .orp-creation-row,
 .orp-saved-rule-item,
+.orp-tab-card,
 .orp-settings-group .setting-item.orp-stacked-row {
     container-type: inline-size;
+}
+
+/* Tab labels: two full names do not fit side by side in a narrow card, so both tabs
+   fall back to their short form. The breakpoint has to clear the longest translation
+   rather than the English one — Russian's "Последовательности команд" wants most of
+   half the strip on its own — so it trades a little unused room in other locales for
+   one rule that holds in all of them. */
+@container (max-width: 500px) {
+    .orp-tab-label {
+        display: none;
+    }
+
+    .orp-tab-label-short {
+        display: inline;
+    }
 }
 
 /* Export/import, and add sequence/add action: one button per line. `flex` is
