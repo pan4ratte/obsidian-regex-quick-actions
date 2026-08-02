@@ -395,8 +395,7 @@ export class RegexQuickActionsSettingsTab extends PluginSettingTab {
 
     private renderManager(root: HTMLElement) {
         root.empty();
-        // The strip and the tab's "new item" row are two halves of one bordered card,
-        // which is why they share a parent; everything else goes in the panel below it.
+        // The strip and the tab's "new item" row are two halves of one bordered card.
         const card = root.createDiv({ cls: 'orp-tab-card' });
         this.renderTabs(card);
         const panel = root.createDiv({ cls: 'orp-tab-panel', attr: { role: 'tabpanel' } });
@@ -404,10 +403,7 @@ export class RegexQuickActionsSettingsTab extends PluginSettingTab {
         else this.renderSequencesTab(card, panel);
     }
 
-    /**
-     * Redraws the manager with the settings pane left where it was. Rebuilding the panel
-     * costs it its scroll position, so it is read before the redraw and written back after.
-     */
+    /** Redraws the manager with the settings pane left where it was. */
     private rerenderInPlace() {
         const scroller = this.findScroller(this.managerRootEl);
         const top = scroller?.scrollTop ?? 0;
@@ -415,10 +411,7 @@ export class RegexQuickActionsSettingsTab extends PluginSettingTab {
         if (scroller) scroller.scrollTop = top;
     }
 
-    /**
-     * The pane that actually scrolls around the manager: the settings dialog's content
-     * area on desktop, the tab body on mobile. Returns null when nothing scrolls yet.
-     */
+    /** The pane that scrolls around the manager, or null when nothing scrolls yet. */
     private findScroller(el: HTMLElement | null): HTMLElement | null {
         for (let node = el?.parentElement ?? null; node; node = node.parentElement) {
             const overflowY = getComputedStyle(node).overflowY;
@@ -428,10 +421,7 @@ export class RegexQuickActionsSettingsTab extends PluginSettingTab {
         return null;
     }
 
-    /**
-     * The tab strip over the two saved lists. Switching tabs drops any half-finished
-     * creation or edit, since the form it belongs to is about to leave the screen.
-     */
+    /** The tab strip. Switching tabs drops any half-finished creation or edit with it. */
     private renderTabs(root: HTMLElement) {
         const bar = root.createDiv({ cls: 'orp-tabs', attr: { role: 'tablist' } });
         const tabs: { id: ManagerTab, label: string, short: string, count: number }[] = [
@@ -455,8 +445,7 @@ export class RegexQuickActionsSettingsTab extends PluginSettingTab {
                 cls: isActive ? 'orp-tab is-active' : 'orp-tab',
                 attr: { role: 'tab', 'aria-selected': String(isActive) }
             });
-            // Both labels are rendered and CSS picks one, so the swap happens with the
-            // width of the card rather than of the screen; see the narrow layouts section.
+            // Both labels are rendered; CSS picks one by the width of the card.
             tab.createSpan({ text: label, cls: 'orp-tab-label' });
             tab.createSpan({ text: short, cls: 'orp-tab-label-short' });
             tab.createSpan({ text: String(count), cls: 'orp-tab-count' });
@@ -484,7 +473,7 @@ export class RegexQuickActionsSettingsTab extends PluginSettingTab {
         }
 
         if (this.plugin.settings.rules.length === 0) {
-            // The open form already says what the tab is for, so the hint would only repeat it.
+            // An open form already says what the tab is for.
             if (!this.showCreationForm) this.renderEmptyState(root, t('NO_ACTIONS_YET'));
             return;
         }
@@ -587,11 +576,9 @@ export class RegexQuickActionsSettingsTab extends PluginSettingTab {
     }
 
     /**
-     * The tab's "new item" button, which is the whole row: no name or description of its
-     * own, and no chrome separating button from row — the button says what it does, and
-     * the entire row is its click target (see .orp-create-row). It goes into the card
-     * under the tab strip, whose lower half it is. Both tabs use the same plus icon:
-     * the row sits in the same place on either, and only the label differs.
+     * The tab's "new item" button, which is the whole row: no name, no description, and
+     * the entire row as its click target (see .orp-create-row). Goes into the tab card,
+     * whose lower half it is.
      */
     private renderCreateRow(card: HTMLElement, label: string, onClick: () => void) {
         const createRow = new Setting(card);
