@@ -1,7 +1,7 @@
 import { Editor, MarkdownView, Menu, MenuItem, Notice, Plugin, TAbstractFile, TFile, TFolder, Vault } from 'obsidian';
 
 import { t } from './i18n';
-import { ActionSequence, CommandApp, DEFAULT_SETTINGS, FileSnapshot, ImportResult, LastRun, MAX_REVERT_CHARS, QuickJob, RegexQuickActionsSettings, RulesetEntry } from './types';
+import { ActionSequence, CommandApp, DEFAULT_SETTINGS, FileSnapshot, ImportResult, LastRun, MAX_REVERT_CHARS, MAX_RULE_CHARS, QuickJob, RegexQuickActionsSettings, RulesetEntry } from './types';
 import { ConfirmationModal, RegexQuickActionsSettingsTab } from './settings';
 
 /**
@@ -542,6 +542,11 @@ export default class RegexQuickActions extends Plugin {
     }
 
     private processRegex(subject: string, ruleText: string, rulesetName: string): { content: string, count: number } {
+        if (ruleText.length > MAX_RULE_CHARS) {
+            console.error(`Regex Quick Actions: Rule in ${rulesetName} is too long to parse`);
+            return { content: subject, count: 0 };
+        }
+
         const ruleParser = /^"(.+?)"([a-z]*?)(?:\r\n|\r|\n)?->(?:\r\n|\r|\n)?"(.*?)"([a-z]*?)(?:\r\n|\r|\n)?$/gmus;
         let count = 0;
         let ruleMatches;

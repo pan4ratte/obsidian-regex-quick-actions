@@ -59,6 +59,13 @@ export interface LastRun {
  */
 export const MAX_REVERT_CHARS = 10_000_000;
 
+/**
+ * Upper bound on the length of a stored rule. The parser is polynomial on text that
+ * repeats the rule delimiters, so an imported action could otherwise hang the app;
+ * a real rule is a few hundred characters.
+ */
+export const MAX_RULE_CHARS = 10_000;
+
 export interface RegexQuickActionsSettings {
     rules: string[];
     rulesets: Record<string, string>;
