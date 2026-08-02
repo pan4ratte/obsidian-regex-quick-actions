@@ -2,32 +2,32 @@
 
 English | [Русский](https://github.com/pan4ratte/obsidian-regex-quick-actions/blob/master/README_RU.md)
 
-This plugin allows you to create regex actions and quickly apply them in different contexts in Obsidian. The plugin was created for automation purposes, so it is compatible with such plugins, as [Commander](https://github.com/phibr0/obsidian-commander).
-
-Regex Quick Actions is a continuation of the idea of [Regex Pipeline](https://github.com/No3371/obsidian-regex-pipeline) plugin. While the base of the code was borrowed from it, now every line is original. Still, cheers to the authors for the inspiration and for making a quick start of this project possible.
+This plugin allows you to create and quickly apply regex commands via command palette, context menus and hotkeys. Made for automation purposes.
 
 ![](media/plugin-demo-settings.png)
 
 
 ## Features
 
-1. Create regex quick actions and use them:
+### 1. Quick actions in every context
 
-	- From the command palette.
-	- From the context menu of the file in the file explorer (default action).
-	- From the context menu of the folder in the file explorer (default action, applies to all files in the folder).
-	- From the context menu of the current note.
-	- With hotkeys.
+Create regex quick actions and run them from the command palette or with hotkeys. They can be applied to a single note as well as to every note in a chosen folder. Setting a default action is available too.
 
-2. Set a default action for quick use.
+### 2. Prepare action sequences
 
-3. Build action sequences: chains of quick actions that run one after another. Open the "Action sequences" tab in the plugin settings, click "New action sequence", name the sequence and pick the quick actions it consists of; the order of the list is the order they run in, and you can rearrange it by dragging the rows (on mobile, with the up and down buttons). Every saved sequence becomes a command palette entry of its own and appears in the same context menus as ordinary quick actions. Each action in a sequence is applied to the result of the previous one, and a sequence never starts an action before the previous one has finished.
+Build chains of quick actions that run one after another. The actions in a sequence can be reordered, and the same action can be run any number of times in a row. Every saved sequence appears in the command palette and in the context menus of notes and folders.
 
-4. Apply actions to selected text only. Turn on "Apply quick actions to selected text" in the plugin settings: after that, any action run from the command palette, a hotkey or the note context menu is applied only to the current selection. If nothing is selected, the action is applied to the whole note. Actions run from the file or folder context menu always apply to whole files.
+### 3. Actions applied to selected text only
 
-5. Export and import quick actions and sequences with the "Backup and restore actions" option at the bottom of the "General" section of the plugin settings. Export saves all your actions to a JSON file; it is available on desktop only, because the mobile app cannot save a file this way. Import adds the actions from such a file and never overwrites what you already have: an imported action whose name is already taken is added under a new name, and an action that is already present is skipped.
+An option in the settings makes actions and sequences apply not only to the whole file, but also to the text currently selected in a note.
 
-6. Revert the last quick action with the "Revert last quick action" command from the command palette. It undoes the most recent run as a whole, including runs over several files or over a whole folder, and it is a single step back rather than a history of them. A file is left untouched if it was edited after the action ran, so your later edits are never overwritten. The undo data is kept in memory only: it is lost when Obsidian is restarted or the plugin is reloaded.
+### 4. Backup and restore
+
+Export and import your quick actions and sequences to a file. Export is available on desktop only, because of the platform's limits.
+
+### 5. Reverting the last executed action
+
+The "Revert last quick action" command in the palette undoes the most recent run as a whole, including runs over several files or over a whole folder.
 
 
 ## Installation
@@ -38,7 +38,7 @@ Regex Quick Actions is a continuation of the idea of [Regex Pipeline](https://gi
 
 2. In the search bar type `Regex Quick Actions`, click on the result, then "Install" and "Enable" buttons.
 
-Alternatively, you can install the plugin by following the link to the community website: [https://community.obsidian.md/plugins/obsidian-regex-quick-actions](https://community.obsidian.md/plugins/obsidian-regex-quick-actions)
+Alternatively, you can install the plugin by following the link to the community website: [https://community.obsidian.md/plugins/regex-quick-actions](https://community.obsidian.md/plugins/regex-quick-actions)
 
 ### Option 2: BRAT plugin
 
@@ -53,15 +53,13 @@ If you want to test beta-versions of the plugin or use previous versions, you ca
 4. Under “Select a version” choose the desired version and click the “Add plugin” button. The plugin will be automatically installed and will be ready to use.
 
 
-## Roadmap
-
-- [x] ~~Add Russian language translation.~~
-
-- [x] ~~Add settings export/import feature.~~
-
 
 ## About the Author
 
 My name is Mark Ingram (Ingrem), I am a Religious Studies scholar. Apart from my main area of study (Protestant Political Theology in Russia), I teach the subject "Information Technologies in Scientific Research", a unique course that I developed myself from scratch. This plugin helps me in my studies and I use it in my teaching, as well as other plugins that I develop and that you can find in my GitHub profile.
 
 Hello to every student that came across this page!
+
+## Credits
+
+Regex Quick Actions is a continuation of the idea of [Regex Pipeline](https://github.com/No3371/obsidian-regex-pipeline) plugin. While the base of the code was borrowed from it, now every line is original. Still, cheers to the authors for the inspiration and for making a quick start of this project possible.
