@@ -24,11 +24,13 @@
     "eslint": "^9.39.2",
     "eslint-plugin-obsidianmd": "^0.4.1",
     "globals": "^16.5.0",
-    "obsidian": "1.13.1",
     "rollup": "^2.32.1",
     "tslib": "^2.0.3",
     "typescript": "^4.0.3",
     "typescript-eslint": "^8.56.0"
+  },
+  "dependencies": {
+    "obsidian": "1.13.1"
   },
   "overrides": {
     "eslint-plugin-obsidianmd": {
