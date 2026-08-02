@@ -1,4 +1,4 @@
-import { App, ButtonComponent, Modal, PluginSettingTab, Setting, ToggleComponent, Notice } from 'obsidian';
+import { App, ButtonComponent, Modal, PluginSettingTab, Setting, SettingDefinitionItem, ToggleComponent, Notice } from 'obsidian';
 import { t } from './i18n';
 import type RegexQuickActions from './main';
 
@@ -47,40 +47,100 @@ export class RegexQuickActionsSettingsTab extends PluginSettingTab {
     patternInputEl: HTMLInputElement;
     flagsInputEl: HTMLInputElement;
 
+    /** Render root of the quick action manager, kept so state changes can redraw it in place. */
+    private managerRootEl: HTMLElement | null = null;
+
     constructor(app: App, plugin: RegexQuickActions) {
         super(app, plugin);
         this.plugin = plugin;
     }
 
-    display() {
-        const { containerEl } = this;
-        containerEl.empty();
+    /**
+     * Declarative settings (Obsidian 1.13+). Every item uses `render` so the plugin keeps
+     * full control of its DOM; `control` is deliberately unused. The list is static, so
+     * state changes redraw the plugin's own root instead of calling update().
+     */
+    getSettingDefinitions(): SettingDefinitionItem[] {
+        return [
+            {
+                type: 'group',
+                cls: 'orp-settings-group',
+                heading: t('PLUGIN_SETTINGS_HEADER'),
+                items: [{
+                    name: t('PLUGIN_SETTINGS_HEADER'),
+                    desc: t('PLUGIN_DESC'),
+                    aliases: ['regex', 'regexp', t('RUN_QUICK_ACTION')],
+                    render: (setting) => {
+                        const root = this.acquireRoot(setting, 'orp-description-root');
+                        root.empty();
+                        root.createEl("p", { text: t('PLUGIN_DESC'), cls: "orp-settings-description" });
+                    }
+                }]
+            },
+            {
+                type: 'group',
+                cls: 'orp-settings-group',
+                heading: t('GENERAL_SECTION_HEADER'),
+                items: [{
+                    name: t('CONFIRM_FOLDER_ACTION'),
+                    desc: t('CONFIRM_FOLDER_ACTION_DESC'),
+                    aliases: [t('FOLDER_ACTION_CONFIRM_TITLE'), t('RUN_DEFAULT_ON_FOLDER')],
+                    // Name and desc are applied to the row by Obsidian before render runs.
+                    render: (setting) => {
+                        setting.addToggle(toggle => toggle
+                            .setValue(this.plugin.settings.confirmFolderAction)
+                            .onChange(async (value) => {
+                                this.plugin.settings.confirmFolderAction = value;
+                                await this.plugin.saveSettings();
+                            }));
+                    }
+                }]
+            },
+            {
+                type: 'group',
+                cls: 'orp-settings-group',
+                heading: t('MANAGE_SECTION_HEADER'),
+                items: [{
+                    name: t('ADD_QUICK_ACTION'),
+                    aliases: [
+                        t('MANAGE_SECTION_HEADER'), t('ACTION_NAME'), t('SEARCH_REGEX'),
+                        t('FLAGS'), t('REPLACEMENT'), t('SET_AS_DEFAULT'), t('EDIT'), t('DELETE')
+                    ],
+                    render: (setting) => {
+                        const root = this.acquireRoot(setting, 'orp-settings-root');
+                        this.managerRootEl = root;
+                        this.renderManager(root);
+                        return () => { this.managerRootEl = null; };
+                    }
+                }]
+            }
+        ];
+    }
 
-        new Setting(containerEl)
-            .setHeading()
-            .setName(t('PLUGIN_SETTINGS_HEADER'));
+    /**
+     * Returns the row's own render root, creating it only if absent.
+     *
+     * The root must live in `setting.settingEl`: after every render pass Obsidian resets
+     * `group.listEl` to exactly the row elements it created, so anything appended there is
+     * pruned away. `Setting.clear()` only empties `controlEl`, so `settingEl`'s own children
+     * survive — which is also why the root has to be reused rather than appended afresh,
+     * or a re-render would stack a second copy of the UI.
+     */
+    private acquireRoot(setting: Setting, cls: string): HTMLElement {
+        setting.settingEl.addClass('orp-settings-anchor');
+        const existing = setting.settingEl.querySelector<HTMLElement>(`:scope > .${cls}`);
+        return existing ?? setting.settingEl.createDiv(cls);
+    }
 
-        containerEl.createEl("p", { text: t('PLUGIN_DESC'), cls: "orp-settings-description" });
+    /** Redraws the manager after a state change, without rebuilding the definition list. */
+    private rerender() {
+        if (this.managerRootEl) this.renderManager(this.managerRootEl);
+    }
 
-        new Setting(containerEl)
-            .setHeading()
-            .setName(t('GENERAL_SECTION_HEADER'));
+    private renderManager(root: HTMLElement) {
+        root.empty();
 
-        new Setting(containerEl)
-            .setName(t('CONFIRM_FOLDER_ACTION'))
-            .setDesc(t('CONFIRM_FOLDER_ACTION_DESC'))
-            .addToggle(toggle => toggle
-                .setValue(this.plugin.settings.confirmFolderAction)
-                .onChange(async (value) => {
-                    this.plugin.settings.confirmFolderAction = value;
-                    await this.plugin.saveSettings();
-                }));
-
-        new Setting(containerEl)
-            .setHeading()
-            .setName(t('MANAGE_SECTION_HEADER'));
-
-        new Setting(containerEl)
+        new Setting(root)
             .setName(t('ADD_QUICK_ACTION'))
             .addButton(btn => btn
                 .setButtonText(t('ADD'))
@@ -88,15 +148,15 @@ export class RegexQuickActionsSettingsTab extends PluginSettingTab {
                 .onClick(() => {
                     this.resetTempFields();
                     this.showCreationForm = !this.showCreationForm;
-                    this.display();
+                    this.rerender();
                 }));
 
         if (this.showCreationForm) {
-            const formContainer = containerEl.createEl("div", { cls: "orp-creation-row" });
+            const formContainer = root.createEl("div", { cls: "orp-creation-row" });
             this.renderFormFields(formContainer, () => this.handleSave());
         }
 
-        const listWrapper = containerEl.createEl("div", { cls: "orp-saved-list" });
+        const listWrapper = root.createEl("div", { cls: "orp-saved-list" });
         this.plugin.settings.rules.forEach(name => {
             const itemRow = listWrapper.createEl("div", { cls: "orp-saved-rule-item" });
             if (this.editingRule === name) {
@@ -118,7 +178,7 @@ export class RegexQuickActionsSettingsTab extends PluginSettingTab {
                     .onChange(async (value) => {
                         this.plugin.settings.defaultRule = value ? name : null;
                         await this.plugin.saveSettings();
-                        this.display();
+                        this.rerender();
                     });
                 defaultWrap.createSpan({ text: t('SET_AS_DEFAULT'), cls: "orp-toggle-label" });
                 const buttons = actionsWrap.createEl("div", { cls: "orp-action-buttons" });
@@ -126,7 +186,7 @@ export class RegexQuickActionsSettingsTab extends PluginSettingTab {
                     this.parseContentToFields(name, content);
                     this.editingRule = name;
                     this.showCreationForm = false;
-                    this.display();
+                    this.rerender();
                 });
                 new ButtonComponent(buttons).setButtonText(t('DELETE')).setWarning().onClick(() => {
                     new ConfirmationModal(
@@ -136,7 +196,7 @@ export class RegexQuickActionsSettingsTab extends PluginSettingTab {
                         t('YES'),
                         async () => {
                             await this.plugin.deleteRuleset(name);
-                            this.display();
+                            this.rerender();
                         }
                     ).open();
                 });
@@ -189,7 +249,7 @@ export class RegexQuickActionsSettingsTab extends PluginSettingTab {
         new ButtonComponent(buttons).setButtonText(t('CANCEL')).onClick(() => {
             this.editingRule = null;
             this.showCreationForm = false;
-            this.display();
+            this.rerender();
         });
     }
 
@@ -266,7 +326,7 @@ export class RegexQuickActionsSettingsTab extends PluginSettingTab {
             await this.plugin.saveSettings();
         }
         this.showCreationForm = false;
-        this.display();
+        this.rerender();
     }
 
     private async handleUpdate(oldName: string) {
@@ -274,7 +334,7 @@ export class RegexQuickActionsSettingsTab extends PluginSettingTab {
         const content = `"${this.tempPattern}"${this.tempFlags}\n->\n"${this.tempReplacement}"`;
         await this.plugin.updateRuleset(oldName, this.tempName, content);
         this.editingRule = null;
-        this.display();
+        this.rerender();
     }
 
     private parseRuleContent(content: string) {

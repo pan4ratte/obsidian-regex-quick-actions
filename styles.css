@@ -137,3 +137,61 @@
     flex-direction: row-reverse;
     gap: 8px;
 }
+
+/* ==========================================================================
+   Obsidian 1.13 declarative settings compatibility
+
+   Obsidian draws a setting group as a single card and restyles the rows inside
+   it with `.setting-group .setting-item:not(.setting-item-heading)` (0,3,0),
+   which outranks ordinary plugin rules and flattens everything into one slab.
+   The rules below blank the group card and return the rows to the standalone
+   card look that this plugin's own cards (.orp-creation-row,
+   .orp-saved-rule-item) were drawn to match.
+
+   ORDERING: anything that re-asserts a row style must stay BELOW the reset —
+   those selectors tie at 0,3,0, so file order decides which one wins.
+   ========================================================================== */
+
+/* The plugin draws its own cards, so the group must not draw one around them. */
+.orp-settings-group > .setting-items {
+    background-color: transparent;
+    border: none;
+    border-radius: 0;
+}
+
+/* Reset: undo the group flattening for every row the plugin owns.
+   `align-items: center` also overrides Obsidian 1.13's unconditional base rule
+   `.setting-item { align-items: flex-start }` (0,1,0), which otherwise pins
+   controls to the top of their row. Keep this selector at 0,3,0: a stronger one
+   would also beat the narrow-container and .is-phone column layouts, which must
+   keep left-aligning their contents. */
+.orp-settings-group .setting-item:not(.setting-item-heading) {
+    align-items: center;
+    background-color: var(--setting-items-background);
+    border: var(--setting-items-border-width) solid var(--setting-items-border-color);
+    border-radius: var(--setting-items-radius);
+    margin-bottom: var(--size-4-2);
+    padding: var(--size-4-4);
+}
+
+/* Obsidian's inter-row divider: separate cards are spaced by their own margin. */
+.orp-settings-group .setting-item:not(.setting-item-heading)::before {
+    content: none;
+}
+
+/* Host rows for custom DOM: containers only, with no chrome of their own. */
+.orp-settings-group .setting-item.orp-settings-anchor {
+    display: block;
+    padding: 0;
+    margin-bottom: 0;
+    border: none;
+    border-radius: 0;
+    background-color: transparent;
+}
+
+/* A host row's stock name/description are populated for the settings search;
+   the plugin renders its own visible heading and body inside the row. */
+.orp-settings-anchor > .setting-item-info,
+.orp-settings-anchor > .setting-item-control {
+    display: none;
+}
