@@ -26,7 +26,7 @@ export class ConfirmationModal extends Modal {
         const { contentEl } = this;
         this.titleEl.setText(this.title);
         contentEl.createEl("p", { text: this.message });
-        const btnContainer = contentEl.createEl("div", { cls: "orp-modal-buttons" });
+        const btnContainer = contentEl.createDiv({ cls: "orp-modal-buttons" });
         new ButtonComponent(btnContainer).setButtonText(t('CANCEL')).onClick(() => this.close());
         new ButtonComponent(btnContainer)
             .setButtonText(this.confirmBtnText)
@@ -468,7 +468,7 @@ export class RegexQuickActionsSettingsTab extends PluginSettingTab {
         });
 
         if (this.showCreationForm) {
-            const formContainer = root.createEl("div", { cls: "orp-creation-row" });
+            const formContainer = root.createDiv({ cls: "orp-creation-row" });
             this.renderFormFields(formContainer, () => this.handleSave());
         }
 
@@ -478,23 +478,23 @@ export class RegexQuickActionsSettingsTab extends PluginSettingTab {
             return;
         }
 
-        const listWrapper = root.createEl("div", { cls: "orp-saved-list" });
+        const listWrapper = root.createDiv({ cls: "orp-saved-list" });
         this.plugin.settings.rules.forEach(name => {
-            const itemRow = listWrapper.createEl("div", { cls: "orp-saved-rule-item" });
+            const itemRow = listWrapper.createDiv({ cls: "orp-saved-rule-item" });
             if (this.editingRule === name) {
                 this.renderFormFields(itemRow, () => this.handleUpdate(name), true);
             } else {
                 const content = this.plugin.settings.rulesets[name] ?? "";
                 const { pattern, flags, replacement } = this.parseRuleContent(content);
-                const nameWrap = itemRow.createEl("div", { cls: "orp-input-wrap orp-name-field" });
+                const nameWrap = itemRow.createDiv({ cls: "orp-input-wrap orp-name-field" });
                 nameWrap.createEl("small", { text: t('ACTION_NAME'), cls: "orp-label" });
-                nameWrap.createEl("div", { text: name, cls: "orp-saved-text-display" });
-                const fieldsRow = itemRow.createEl("div", { cls: "orp-fields-row" });
+                nameWrap.createDiv({ text: name, cls: "orp-saved-text-display" });
+                const fieldsRow = itemRow.createDiv({ cls: "orp-fields-row" });
                 this.createDisplayField(fieldsRow, t('SEARCH_REGEX'), pattern, "orp-pattern-field");
                 this.createDisplayField(fieldsRow, t('FLAGS'), flags, "orp-flags-field");
                 this.createDisplayField(fieldsRow, t('REPLACEMENT'), replacement, "orp-replacement-field");
-                const actionsWrap = itemRow.createEl("div", { cls: "orp-input-wrap orp-creation-actions" });
-                const defaultWrap = actionsWrap.createEl("div", { cls: "orp-default-toggle-wrap" });
+                const actionsWrap = itemRow.createDiv({ cls: "orp-input-wrap orp-creation-actions" });
+                const defaultWrap = actionsWrap.createDiv({ cls: "orp-default-toggle-wrap" });
                 new ToggleComponent(defaultWrap)
                     .setValue(this.plugin.settings.defaultRule === name)
                     .onChange(async (value) => {
@@ -503,7 +503,7 @@ export class RegexQuickActionsSettingsTab extends PluginSettingTab {
                         this.rerender();
                     });
                 defaultWrap.createSpan({ text: t('SET_AS_DEFAULT'), cls: "orp-toggle-label" });
-                const buttons = actionsWrap.createEl("div", { cls: "orp-action-buttons" });
+                const buttons = actionsWrap.createDiv({ cls: "orp-action-buttons" });
                 new ButtonComponent(buttons).setButtonText(t('EDIT')).onClick(() => {
                     this.parseContentToFields(name, content);
                     this.editingRule = name;
@@ -542,21 +542,21 @@ export class RegexQuickActionsSettingsTab extends PluginSettingTab {
             return;
         }
 
-        const listWrapper = root.createEl("div", { cls: "orp-saved-list" });
+        const listWrapper = root.createDiv({ cls: "orp-saved-list" });
         sequences.forEach(sequence => {
-            const itemRow = listWrapper.createEl("div", { cls: "orp-saved-rule-item" });
-            const nameWrap = itemRow.createEl("div", { cls: "orp-input-wrap orp-name-field" });
+            const itemRow = listWrapper.createDiv({ cls: "orp-saved-rule-item" });
+            const nameWrap = itemRow.createDiv({ cls: "orp-input-wrap orp-name-field" });
             nameWrap.createEl("small", { text: t('SEQUENCE_NAME'), cls: "orp-label" });
-            nameWrap.createEl("div", { text: sequence.name, cls: "orp-saved-text-display" });
+            nameWrap.createDiv({ text: sequence.name, cls: "orp-saved-text-display" });
 
-            const stepsWrap = itemRow.createEl("div", { cls: "orp-input-wrap" });
+            const stepsWrap = itemRow.createDiv({ cls: "orp-input-wrap" });
             stepsWrap.createEl("small", { text: t('SEQUENCE_STEPS_LABEL'), cls: "orp-label" });
-            stepsWrap.createEl("div", {
+            stepsWrap.createDiv({
                 text: sequence.steps.join("  →  "),
                 cls: "orp-saved-text-display"
             });
 
-            const buttons = itemRow.createEl("div", { cls: "orp-sequence-actions" });
+            const buttons = itemRow.createDiv({ cls: "orp-sequence-actions" });
             new ButtonComponent(buttons).setButtonText(t('EDIT')).onClick(() => {
                 new SequenceModal(this.app, this.plugin, sequence, () => this.rerender()).open();
             });
@@ -594,13 +594,13 @@ export class RegexQuickActionsSettingsTab extends PluginSettingTab {
     }
 
     private createDisplayField(parent: HTMLElement, label: string, val: string, cls: string) {
-        const wrap = parent.createEl("div", { cls: `orp-input-wrap ${cls}` });
+        const wrap = parent.createDiv({ cls: `orp-input-wrap ${cls}` });
         wrap.createEl("small", { text: label, cls: "orp-label" });
-        wrap.createEl("div", { text: val, cls: "orp-saved-text-display" });
+        wrap.createDiv({ text: val, cls: "orp-saved-text-display" });
     }
 
     private renderFormFields(container: HTMLElement, onConfirm: () => unknown, isUpdate = false) {
-        const nameWrap = container.createEl("div", { cls: "orp-input-wrap orp-name-field" });
+        const nameWrap = container.createDiv({ cls: "orp-input-wrap orp-name-field" });
         nameWrap.createEl("small", { text: t('ACTION_NAME'), cls: "orp-label" });
         this.nameInputEl = nameWrap.createEl("input", {
             type: "text",
@@ -612,13 +612,13 @@ export class RegexQuickActionsSettingsTab extends PluginSettingTab {
             this.tempName = (e.target as HTMLInputElement).value
         );
 
-        const fieldsRow = container.createEl("div", { cls: "orp-fields-row" });
+        const fieldsRow = container.createDiv({ cls: "orp-fields-row" });
         this.patternInputEl = this.createInputField(fieldsRow, t('SEARCH_REGEX'), this.tempPattern, t('PLACEHOLDER_SEARCH'), "orp-pattern-field", (v) => this.tempPattern = v);
         this.flagsInputEl = this.createInputField(fieldsRow, t('FLAGS'), this.tempFlags, t('PLACEHOLDER_FLAGS'), "orp-flags-field", (v) => this.tempFlags = v);
         this.createInputField(fieldsRow, t('REPLACEMENT'), this.tempReplacement, t('PLACEHOLDER_REPLACEMENT'), "orp-replacement-field", (v) => this.tempReplacement = v);
 
-        const actionsWrap = container.createEl("div", { cls: "orp-input-wrap orp-creation-actions" });
-        const defaultWrap = actionsWrap.createEl("div", { cls: "orp-default-toggle-wrap" });
+        const actionsWrap = container.createDiv({ cls: "orp-input-wrap orp-creation-actions" });
+        const defaultWrap = actionsWrap.createDiv({ cls: "orp-default-toggle-wrap" });
         const initialToggleValue = isUpdate
             ? (this.plugin.settings.defaultRule === this.editingRule)
             : this.tempIsDefault;
@@ -633,7 +633,7 @@ export class RegexQuickActionsSettingsTab extends PluginSettingTab {
                 }
             });
         defaultWrap.createSpan({ text: t('SET_AS_DEFAULT'), cls: "orp-toggle-label" });
-        const buttons = actionsWrap.createEl("div", { cls: "orp-action-buttons" });
+        const buttons = actionsWrap.createDiv({ cls: "orp-action-buttons" });
         new ButtonComponent(buttons).setButtonText(t('SAVE')).setCta().onClick(onConfirm);
         new ButtonComponent(buttons).setButtonText(t('CANCEL')).onClick(() => {
             this.editingRule = null;
@@ -650,7 +650,7 @@ export class RegexQuickActionsSettingsTab extends PluginSettingTab {
         cls: string,
         onChange: (v: string) => void
     ): HTMLInputElement {
-        const wrap = parent.createEl("div", { cls: `orp-input-wrap ${cls}` });
+        const wrap = parent.createDiv({ cls: `orp-input-wrap ${cls}` });
         wrap.createEl("small", { text: label, cls: "orp-label" });
         const input = wrap.createEl("input", { type: "text", value: val, placeholder: ph, cls: "orp-input" });
         input.addEventListener("input", (e) => onChange((e.target as HTMLInputElement).value));

@@ -190,7 +190,7 @@ export default class RegexQuickActions extends Plugin {
                     if (!checking) {
                         const job = this.resolveAction(name);
                         if (job) void this.applyJob(job);
-                        else new Notice(name + t('NOT_FOUND_ERR'));
+                        else new Notice(t('NOT_FOUND_ERR', name));
                     }
                     return true;
                 }
@@ -209,7 +209,7 @@ export default class RegexQuickActions extends Plugin {
                     if (!checking) {
                         const job = this.resolveSequence(name);
                         if (job) void this.applyJob(job);
-                        else new Notice(name + t('NOT_FOUND_ERR'));
+                        else new Notice(t('NOT_FOUND_ERR', name));
                     }
                     return true;
                 }
