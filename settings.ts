@@ -1,7 +1,7 @@
 import { AbstractInputSuggest, App, ButtonComponent, Modal, Platform, PluginSettingTab, Setting, SettingDefinitionItem, ToggleComponent, Notice, setIcon } from 'obsidian';
 import { t } from './i18n';
 import type RegexQuickActions from './main';
-import type { ActionSequence, RulesetEntry } from './types';
+import type { ActionSequence, RegexRule, RulesetEntry } from './types';
 
 /** Replays the invalid-field border animation on an element. */
 function flashFieldError(el: HTMLElement) {
@@ -9,6 +9,56 @@ function flashFieldError(el: HTMLElement) {
     el.classList.remove('field-error');
     void el.offsetWidth;
     el.classList.add('field-error');
+}
+
+/** A labelled text input, in the shape every quick action field uses. */
+function createInputField(
+    parent: HTMLElement,
+    label: string,
+    val: string,
+    ph: string,
+    cls: string,
+    onChange: (v: string) => void
+): HTMLInputElement {
+    const wrap = parent.createDiv({ cls: `orp-input-wrap ${cls}` });
+    wrap.createEl("small", { text: label, cls: "orp-label" });
+    const input = wrap.createEl("input", { type: "text", value: val, placeholder: ph, cls: "orp-input" });
+    input.addEventListener("input", (e) => onChange((e.target as HTMLInputElement).value));
+    return input;
+}
+
+/**
+ * Checks that the pattern and flags form a usable regex, reporting whichever of the two
+ * is at fault. Shared by the settings form and the ad-hoc find/replace.
+ */
+function validatePattern(
+    pattern: string,
+    flags: string,
+    patternEl: HTMLInputElement,
+    flagsEl: HTMLInputElement
+): boolean {
+    if (!pattern.trim()) {
+        new Notice(t('PATTERN_EMPTY_ERR'));
+        flashFieldError(patternEl);
+        return false;
+    }
+
+    try {
+        new RegExp(pattern, flags || 'gm');
+    } catch (e) {
+        const errorMsg = e instanceof Error ? e.message.toLowerCase() : String(e).toLowerCase();
+        const isFlagError = errorMsg.includes("flag") || /[^gimsuy]/.test(flags);
+
+        if (isFlagError) {
+            new Notice(t('FLAGS_INVALID_ERR'));
+            flashFieldError(flagsEl);
+        } else {
+            new Notice(t('REGEX_INVALID_ERR'));
+            flashFieldError(patternEl);
+        }
+        return false;
+    }
+    return true;
 }
 
 export class ConfirmationModal extends Modal {
@@ -39,6 +89,84 @@ export class ConfirmationModal extends Modal {
 
     onClose() {
         this.contentEl.empty();
+    }
+}
+
+/**
+ * A one-off find/replace over the note in front of the user. The card is the saved quick
+ * action card without the parts that only a stored action has: the rule is applied once
+ * and then forgotten, so it has no name, cannot be made the default, and has nothing to
+ * edit or delete. Under the card sit the note saying which text the run will reach and
+ * the button that runs it.
+ */
+export class QuickFindReplaceModal extends Modal {
+    private pattern = "";
+    private flags = "gm";
+    private replacement = "";
+
+    private patternInputEl: HTMLInputElement;
+    private flagsInputEl: HTMLInputElement;
+
+    constructor(
+        app: App,
+        private useSelection: boolean,
+        private onReplace: (rule: RegexRule) => void
+    ) {
+        super(app);
+    }
+
+    onOpen() {
+        const { contentEl } = this;
+        contentEl.addClass('orp-find-replace-modal');
+        this.titleEl.setText(t('QUICK_FIND_REPLACE'));
+
+        const card = contentEl.createDiv({ cls: 'orp-creation-row' });
+        const fieldsRow = card.createDiv({ cls: 'orp-fields-row' });
+        this.patternInputEl = createInputField(fieldsRow, t('SEARCH_REGEX'), this.pattern,
+            t('PLACEHOLDER_SEARCH'), 'orp-pattern-field', (v) => this.pattern = v);
+        this.flagsInputEl = createInputField(fieldsRow, t('FLAGS'), this.flags,
+            t('PLACEHOLDER_FLAGS'), 'orp-flags-field', (v) => this.flags = v);
+        const replacementEl = createInputField(fieldsRow, t('REPLACEMENT'), this.replacement,
+            t('PLACEHOLDER_REPLACEMENT'), 'orp-replacement-field', (v) => this.replacement = v);
+
+        // Enter runs the replacement from any field: there is nothing else to submit here.
+        [this.patternInputEl, this.flagsInputEl, replacementEl].forEach(input => {
+            input.addEventListener('keydown', (e) => {
+                if (e.key !== 'Enter') return;
+                e.preventDefault();
+                this.replace();
+            });
+        });
+
+        // Under the card: what the run will reach on the left, the button that runs it
+        // on the right, so the scope is read on the way to the click.
+        const footer = contentEl.createDiv({ cls: 'orp-find-replace-footer' });
+        const note = footer.createDiv({ cls: 'orp-find-replace-note' });
+        setIcon(note.createSpan({ cls: 'orp-find-replace-note-icon' }), 'info');
+        note.createSpan({
+            text: this.useSelection
+                ? t('QUICK_FIND_REPLACE_SCOPE_SELECTION')
+                : t('QUICK_FIND_REPLACE_SCOPE_NOTE')
+        });
+
+        new ButtonComponent(footer)
+            .setButtonText(t('REPLACE'))
+            .setCta()
+            .onClick(() => this.replace())
+            .buttonEl.addClass('orp-find-replace-run');
+
+        this.patternInputEl.focus();
+    }
+
+    onClose() {
+        this.contentEl.empty();
+    }
+
+    private replace() {
+        if (!validatePattern(this.pattern, this.flags, this.patternInputEl, this.flagsInputEl)) return;
+        // Empty replacement deletes the matches, which is the same as the stored "x" mode.
+        this.onReplace({ pattern: this.pattern, flags: this.flags, replacement: this.replacement, mode: '' });
+        this.close();
     }
 }
 
@@ -613,9 +741,9 @@ export class RegexQuickActionsSettingsTab extends PluginSettingTab {
         );
 
         const fieldsRow = container.createDiv({ cls: "orp-fields-row" });
-        this.patternInputEl = this.createInputField(fieldsRow, t('SEARCH_REGEX'), this.tempPattern, t('PLACEHOLDER_SEARCH'), "orp-pattern-field", (v) => this.tempPattern = v);
-        this.flagsInputEl = this.createInputField(fieldsRow, t('FLAGS'), this.tempFlags, t('PLACEHOLDER_FLAGS'), "orp-flags-field", (v) => this.tempFlags = v);
-        this.createInputField(fieldsRow, t('REPLACEMENT'), this.tempReplacement, t('PLACEHOLDER_REPLACEMENT'), "orp-replacement-field", (v) => this.tempReplacement = v);
+        this.patternInputEl = createInputField(fieldsRow, t('SEARCH_REGEX'), this.tempPattern, t('PLACEHOLDER_SEARCH'), "orp-pattern-field", (v) => this.tempPattern = v);
+        this.flagsInputEl = createInputField(fieldsRow, t('FLAGS'), this.tempFlags, t('PLACEHOLDER_FLAGS'), "orp-flags-field", (v) => this.tempFlags = v);
+        createInputField(fieldsRow, t('REPLACEMENT'), this.tempReplacement, t('PLACEHOLDER_REPLACEMENT'), "orp-replacement-field", (v) => this.tempReplacement = v);
 
         const actionsWrap = container.createDiv({ cls: "orp-input-wrap orp-creation-actions" });
         const defaultWrap = actionsWrap.createDiv({ cls: "orp-default-toggle-wrap" });
@@ -640,21 +768,6 @@ export class RegexQuickActionsSettingsTab extends PluginSettingTab {
             this.showCreationForm = false;
             this.rerender();
         });
-    }
-
-    private createInputField(
-        parent: HTMLElement,
-        label: string,
-        val: string,
-        ph: string,
-        cls: string,
-        onChange: (v: string) => void
-    ): HTMLInputElement {
-        const wrap = parent.createDiv({ cls: `orp-input-wrap ${cls}` });
-        wrap.createEl("small", { text: label, cls: "orp-label" });
-        const input = wrap.createEl("input", { type: "text", value: val, placeholder: ph, cls: "orp-input" });
-        input.addEventListener("input", (e) => onChange((e.target as HTMLInputElement).value));
-        return input;
     }
 
     private triggerFieldError(el: HTMLElement) {
@@ -682,28 +795,7 @@ export class RegexQuickActionsSettingsTab extends PluginSettingTab {
             return false;
         }
 
-        if (!this.tempPattern.trim()) {
-            new Notice(t('PATTERN_EMPTY_ERR'));
-            this.triggerFieldError(this.patternInputEl);
-            return false;
-        }
-
-        try {
-            new RegExp(this.tempPattern, this.tempFlags || 'gm');
-        } catch (e) {
-            const errorMsg = e instanceof Error ? e.message.toLowerCase() : String(e).toLowerCase();
-            const isFlagError = errorMsg.includes("flag") || /[^gimsuy]/.test(this.tempFlags);
-
-            if (isFlagError) {
-                new Notice(t('FLAGS_INVALID_ERR'));
-                this.triggerFieldError(this.flagsInputEl);
-            } else {
-                new Notice(t('REGEX_INVALID_ERR'));
-                this.triggerFieldError(this.patternInputEl);
-            }
-            return false;
-        }
-        return true;
+        return validatePattern(this.tempPattern, this.tempFlags, this.patternInputEl, this.flagsInputEl);
     }
 
     private async handleSave() {

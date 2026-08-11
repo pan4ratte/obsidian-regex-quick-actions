@@ -16,6 +16,7 @@ export default {
     YES: "Yes",
     EDIT: "Edit",
     DELETE: "Delete",
+    REPLACE: "Replace",
 
     /* Dialog texts */
 
@@ -61,6 +62,9 @@ export default {
     RUN_DEFAULT_ON_FOLDER: "Run default quick action on folder",
     RUN_QUICK_ACTION: "Run quick action",
     REVERT_LAST: "Revert last quick action",
+    QUICK_FIND_REPLACE: "Quick find/replace",
+    QUICK_FIND_REPLACE_SCOPE_NOTE: "The replacement will be applied to the whole note.",
+    QUICK_FIND_REPLACE_SCOPE_SELECTION: "The replacement will be applied to the selected text only.",
     CONFIRM_FOLDER_ACTION: "Confirmation for quick action on folder",
     CONFIRM_FOLDER_ACTION_DESC: "Show a confirmation dialog before running quick action on every file inside a chosen folder.",
     APPLY_TO_SELECTION: "Apply quick actions to selected text",

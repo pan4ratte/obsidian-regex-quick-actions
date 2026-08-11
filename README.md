@@ -17,15 +17,19 @@ Create regex quick actions and run them from the command palette or with hotkeys
 
 Build chains of quick actions that run one after another. The actions in a sequence can be reordered, and the same action can be run any number of times in a row. Every saved sequence appears in the command palette and in the context menus of notes and folders.
 
-### 3. Actions applied to selected text only
+### 3. Quick find/replace
+
+The "Quick find/replace" command in the palette opens a window for a single, unsaved run of a regex command: type a regex, its flags and a replacement, and apply them to the open note.
+
+### 4. Actions applied to selected text only
 
 An option in the settings makes actions and sequences apply not only to the whole file, but also to the text currently selected in a note.
 
-### 4. Backup and restore
+### 5. Backup and restore
 
 Export and import your quick actions and sequences to a file. Export is available on desktop only, because of the platform's limits.
 
-### 5. Reverting the last executed action
+### 6. Reverting the last executed action
 
 The "Revert last quick action" command in the palette undoes the most recent run as a whole, including runs over several files or over a whole folder.
 

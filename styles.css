@@ -253,6 +253,48 @@
 }
 
 /* ==========================================================================
+   Quick find/replace modal
+
+   The card inside it is the settings card (.orp-creation-row and the field
+   classes), so the two stay identical by construction; only what the modal adds
+   around it is styled here.
+   ========================================================================== */
+
+/* The row under the card: scope note, then the button. Wraps when the two no longer fit
+   side by side, and `margin-left: auto` keeps the button at the right edge either way. */
+.orp-find-replace-footer {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.orp-find-replace-run {
+    flex: 0 0 auto;
+    margin-left: auto;
+}
+
+/* Scope note: what the run will reach, whole note or selection. */
+.orp-find-replace-note {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 0 4px;
+    color: var(--text-muted);
+    font-size: var(--font-smallest);
+}
+
+.orp-find-replace-note-icon {
+    display: flex;
+    flex: 0 0 auto;
+}
+
+.orp-find-replace-note-icon .svg-icon {
+    width: var(--icon-s);
+    height: var(--icon-s);
+}
+
+/* ==========================================================================
    Action sequence modal
 
    Self-contained on purpose: every element inside the modal carries its own

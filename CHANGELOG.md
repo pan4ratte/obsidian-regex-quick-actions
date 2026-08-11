@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.1.0
+
+### New features
+
+* **Quick find/replace.** The new "Quick find/replace" palette command opens a window for a single, unsaved run: type a regex, its flags and a replacement, and apply them to the open note. A note under the card says whether the run will reach the whole note or only the selected text, and the result can be undone with the revert command like any other run.
+
+
 ## 2.0.0
 
 ### New features

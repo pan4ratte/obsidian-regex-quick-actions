@@ -15,13 +15,28 @@ export interface ActionSequence {
     steps: string[];
 }
 
+/** One find/replace pair, as parsed out of a stored rule text. */
+export interface RegexRule {
+    pattern: string;
+    flags: string;
+    replacement: string;
+    /** "x" deletes every match; anything else expands the replacement. */
+    mode: string;
+}
+
 /**
  * A resolved unit of work: the rule texts to apply, in order, under one display name.
  * A quick action resolves to a single step, a sequence to one step per member action.
+ *
+ * `rules` carries ready-made rules for a run that never came from storage — the ad-hoc
+ * find/replace. Such a run cannot go through `steps`, because the stored rule format has
+ * no way to escape a quote, so a pattern containing one would not survive the round trip.
+ * When it is set, `steps` is ignored.
  */
 export interface QuickJob {
     name: string;
     steps: string[];
+    rules?: RegexRule[];
 }
 
 /** A single quick action as it travels through an export file. */

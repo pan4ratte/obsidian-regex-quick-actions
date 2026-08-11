@@ -16,6 +16,7 @@ export default {
     YES: "Да",
     EDIT: "Редактировать",
     DELETE: "Удалить",
+    REPLACE: "Заменить",
 
     /* Dialog texts */
 
@@ -61,6 +62,9 @@ export default {
     RUN_DEFAULT_ON_FOLDER: "Применить быструю команду по умолчанию к папке",
     RUN_QUICK_ACTION: "Применить быструю команду",
     REVERT_LAST: "Отменить последнюю быструю команду",
+    QUICK_FIND_REPLACE: "Быстрый поиск и замена",
+    QUICK_FIND_REPLACE_SCOPE_NOTE: "Замена будет применена ко всей заметке.",
+    QUICK_FIND_REPLACE_SCOPE_SELECTION: "Замена будет применена только к выделенному тексту.",
     CONFIRM_FOLDER_ACTION: "Подтверждение перед применением быстрой команды к папке",
     CONFIRM_FOLDER_ACTION_DESC: "Запрашивать подтверждение перед применением быстрой команды к ко всем файлам в папке.",
     APPLY_TO_SELECTION: "Применять быстрые команды к выделенному тексту",

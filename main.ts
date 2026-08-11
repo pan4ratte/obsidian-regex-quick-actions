@@ -1,8 +1,8 @@
 import { Editor, MarkdownView, Menu, MenuItem, Notice, Plugin, TAbstractFile, TFile, TFolder, Vault } from 'obsidian';
 
 import { t } from './i18n';
-import { ActionSequence, CommandApp, DEFAULT_SETTINGS, FileSnapshot, ImportResult, LastRun, MAX_REVERT_CHARS, MAX_RULE_CHARS, QuickJob, RegexQuickActionsSettings, RulesetEntry } from './types';
-import { ConfirmationModal, RegexQuickActionsSettingsTab } from './settings';
+import { ActionSequence, CommandApp, DEFAULT_SETTINGS, FileSnapshot, ImportResult, LastRun, MAX_REVERT_CHARS, MAX_RULE_CHARS, QuickJob, RegexQuickActionsSettings, RegexRule, RulesetEntry } from './types';
+import { ConfirmationModal, QuickFindReplaceModal, RegexQuickActionsSettingsTab } from './settings';
 
 /**
  * Expands a replacement string ($1, $&, $<name>, ...) against the arguments
@@ -57,6 +57,14 @@ export default class RegexQuickActions extends Plugin {
         });
 
         this.addCommand({
+            id: 'quick-find-replace',
+            name: t('QUICK_FIND_REPLACE'),
+            editorCallback: (editor: Editor) => {
+                this.openQuickFindReplace(editor);
+            }
+        });
+
+        this.addCommand({
             id: 'revert-last-quick-action',
             name: t('REVERT_LAST'),
             callback: () => {
@@ -96,6 +104,18 @@ export default class RegexQuickActions extends Plugin {
                 this.addRunSubmenu(menu, job => void this.applyJob(job, editor));
             })
         );
+    }
+
+    /**
+     * Opens the ad-hoc find/replace over the active editor. The rule is used once and
+     * never stored, so it goes to the job as a ready-made rule rather than as rule text.
+     */
+    private openQuickFindReplace(editor: Editor) {
+        // Reports the scope the run will end up with, decided the same way applyJob does.
+        const useSelection = this.settings.applyToSelection && editor.somethingSelected();
+        new QuickFindReplaceModal(this.app, useSelection, (rule: RegexRule) => {
+            void this.applyJob({ name: t('QUICK_FIND_REPLACE'), steps: [], rules: [rule] }, editor);
+        }).open();
     }
 
     /** Adds the "run default" entry, when a default quick action is set. */
@@ -463,10 +483,15 @@ export default class RegexQuickActions extends Plugin {
      * the file is read once up front and written once at the end.
      */
     private processJob(subject: string, job: QuickJob): { content: string, count: number } {
+        // An ad-hoc job brings its own rules; a stored one carries the texts they parse from.
+        const steps = job.rules
+            ? [job.rules]
+            : job.steps.map(ruleText => this.parseRules(ruleText, job.name));
+
         let content = subject;
         let count = 0;
-        for (const ruleText of job.steps) {
-            const result = this.processRegex(content, ruleText, job.name);
+        for (const rules of steps) {
+            const result = this.applyRules(content, rules, job.name);
             content = result.content;
             count += result.count;
         }
@@ -541,18 +566,28 @@ export default class RegexQuickActions extends Plugin {
         return true;
     }
 
-    private processRegex(subject: string, ruleText: string, rulesetName: string): { content: string, count: number } {
+    /** Reads the find/replace pairs out of a stored rule text. */
+    private parseRules(ruleText: string, rulesetName: string): RegexRule[] {
         if (ruleText.length > MAX_RULE_CHARS) {
             console.error(`Regex Quick Actions: Rule in ${rulesetName} is too long to parse`);
-            return { content: subject, count: 0 };
+            return [];
         }
 
         const ruleParser = /^"(.+?)"([a-z]*?)(?:\r\n|\r|\n)?->(?:\r\n|\r|\n)?"(.*?)"([a-z]*?)(?:\r\n|\r|\n)?$/gmus;
-        let count = 0;
+        const rules: RegexRule[] = [];
         let ruleMatches;
-        let output = subject;
         while ((ruleMatches = ruleParser.exec(ruleText)) !== null) {
             const [ , pattern, flags, replacement, mode ] = ruleMatches;
+            rules.push({ pattern, flags, replacement, mode });
+        }
+        return rules;
+    }
+
+    /** Applies rules to the text in order, each one over the output of the one before. */
+    private applyRules(subject: string, rules: RegexRule[], rulesetName: string): { content: string, count: number } {
+        let count = 0;
+        let output = subject;
+        for (const { pattern, flags, replacement, mode } of rules) {
             try {
                 const matchRule = new RegExp(pattern, flags || 'gm');
                 output = output.replace(matchRule, (...args) => {
