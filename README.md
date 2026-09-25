@@ -1,10 +1,19 @@
 # Regex Quick Actions plugin
 
-English | [Русский](https://github.com/pan4ratte/obsidian-regex-quick-actions/blob/master/README_RU.md)
+<div align="center">
+  <img alt="Regex Quick Actions" src="media/plugin-demo-settings.png" width="100%">
+</div>
 
-This plugin allows you to create and quickly apply regex commands via command palette, context menus and hotkeys. Made for automation purposes.
+<div align="center">
+<br>
+<a href="https://pay.cloudtips.ru/p/c0e8eac4"><img alt="badge" src="https://shieldcn.dev/badge/Поддержать%20разработку-(RU%20карты).svg?size=lg&amp;logo=ri%3AFaHeart&amp;logoColor=ef4444&amp;color=09090b&amp;labelTextColor=ef4444"></a>
+<br>
+<p>This plugin allows you to create and quickly apply regex commands via command palette, context menus and hotkeys. Made for automation purposes.</p>
+</div>
 
-![](media/plugin-demo-settings.png)
+<div align="center">
+English | <a href="https://github.com/pan4ratte/obsidian-regex-quick-actions/blob/master/README_RU.md">Русский</a>
+</div>
 
 
 ## Features
@@ -60,9 +69,9 @@ If you want to test beta-versions of the plugin or use previous versions, you ca
 
 ## About the Author
 
-My name is Mark Ingram (Ingrem), I am a Religious Studies scholar. Apart from my main area of study (Protestant Political Theology in Russia), I teach the subject "Information Technologies in Scientific Research", a unique course that I developed myself from scratch. This plugin helps me in my studies and I use it in my teaching, as well as other plugins that I develop and that you can find in my GitHub profile.
+My name is Mark Ingrem and I am a Religious Studies scholar. Apart from my main area of study (Protestant Political Theology in Russia), I teach a university course called "Information Technologies in Scientific Research", which is based on my own unique program. This plugin helps me in my research and I use it in my teaching, along with the other plugins I develop, which you can find on [my GitHub profile](https://github.com/pan4ratte/).
 
-Hello to every student that came across this page!
+Hello to every student who came across this page!
 
 ## Credits
 
