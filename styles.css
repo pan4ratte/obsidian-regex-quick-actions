@@ -110,7 +110,7 @@
 .orp-action-buttons .mod-destructive:hover,
 .orp-sequence-actions .mod-destructive:hover {
     background-color: var(--text-error);
-    color: white;
+    color: var(--text-on-accent);
     border-color: var(--text-error);
 }
 
@@ -124,9 +124,11 @@
         border-color: var(--text-error);
         box-shadow: 0 0 0 1px var(--text-error);
     }
+
     20% {
         border-color: var(--text-error);
     }
+
     100% {
         border-color: var(--background-modifier-border);
         box-shadow: none;
@@ -561,12 +563,6 @@
     transition: all 0.2s ease;
 }
 
-/* Neutral at rest, accent only under the pointer. */
-.orp-stacked-row > .setting-item-control button:not(:disabled):hover {
-    background-color: var(--interactive-accent);
-    color: var(--text-on-accent);
-}
-
 /* The row holds one button, so the button takes the row's padding and fills it, making
    every point in the row clickable. No chrome: the shape belongs to .orp-tab-card.
    ORDERING: ties with the .orp-stacked-row button rules above, so must stay below. */
@@ -580,16 +576,25 @@
     color: var(--text-muted);
 }
 
-/* The tab strip's hover: at full row size the accent flood reads as a state change. */
-.orp-create-row > .setting-item-control button:not(:disabled):hover {
-    background-color: var(--background-modifier-hover);
-    color: var(--text-normal);
-}
+/* Base rules above, state rules below, so each create-row rule still follows the
+   stacked-row rule it ties with. */
 
 /* Dropping the box-shadow took the stock focus ring with it. */
 .orp-create-row > .setting-item-control button:focus-visible {
     outline: 2px solid var(--background-modifier-border-focus);
     outline-offset: -2px;
+}
+
+/* Neutral at rest, accent only under the pointer. */
+.orp-stacked-row > .setting-item-control button:not(:disabled):hover {
+    background-color: var(--interactive-accent);
+    color: var(--text-on-accent);
+}
+
+/* The tab strip's hover: at full row size the accent flood reads as a state change. */
+.orp-create-row > .setting-item-control button:not(:disabled):hover {
+    background-color: var(--background-modifier-hover);
+    color: var(--text-normal);
 }
 
 .orp-stacked-row > .setting-item-control button .svg-icon {
@@ -775,6 +780,7 @@
 /* No `markdown-rendered` here: its note-sized fonts would override the sizes below. */
 .orp-markdown-modal {
     max-width: 680px;
+
     /* Obsidian disables selection inside modals. */
     user-select: text;
     cursor: auto;

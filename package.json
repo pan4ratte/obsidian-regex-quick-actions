@@ -6,8 +6,10 @@
   "scripts": {
     "dev": "rollup -c -w",
     "build": "tsc -noEmit -skipLibCheck && rollup -c",
-    "lint": "eslint .",
-    "fix": "eslint . --fix"
+    "lint": "npm run lint:ts && npm run lint:css",
+    "lint:ts": "eslint .",
+    "lint:css": "stylelint \"**/*.css\" --ignore-disables",
+    "fix": "eslint . --fix && stylelint \"**/*.css\" --fix"
   },
   "keywords": [],
   "author": "",
@@ -25,6 +27,8 @@
     "eslint-plugin-obsidianmd": "^0.4.1",
     "globals": "^16.5.0",
     "rollup": "^2.32.1",
+    "stylelint": "^17.15.0",
+    "stylelint-config-obsidianmd": "^0.1.0",
     "tslib": "^2.0.3",
     "typescript": "^4.0.3",
     "typescript-eslint": "^8.56.0"

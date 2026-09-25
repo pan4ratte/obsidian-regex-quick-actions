@@ -12,9 +12,11 @@ Regex Quick Actions is an Obsidian community plugin (id `regex-quick-actions`). 
 npm install       # install dependencies
 npm run dev       # rollup watch build → main.js
 npm run build     # type check (tsc --noEmit) + production bundle
-npm run lint      # eslint with the official obsidianmd ruleset
-npm run fix       # eslint --fix
+npm run lint      # eslint (TypeScript) + stylelint (styles.css)
+npm run fix       # eslint --fix + stylelint --fix
 ```
+
+Both linters run the rule sets of Obsidian's community plugin review. ESLint uses `eslint-plugin-obsidianmd` (see `eslint.config.mjs`). Stylelint uses `stylelint-config-obsidianmd`, checked against Electron 39 (see `stylelint.config.mjs`). A warning here is one the review would report, so fix it rather than disabling the rule. `lint:css` runs with `--ignore-disables`, so `stylelint-disable` comments have no effect.
 
 There is no automated test suite. After every source change, run `npm run build` and `npm run lint` yourself, without being asked, and make sure both pass with no new warnings. Obsidian loads the bundled `main.js`, not the TypeScript, so an unbuilt fix looks like one that didn't work. The changelogs are bundled too. Test behaviour by hand in an Obsidian vault (see [Manual testing](#manual-testing)).
 
@@ -57,6 +59,7 @@ Generated or local files you must not edit or commit: `main.js` (rollup output),
 - **Mobile.** Do not use Node or Electron modules (lint enforces this). Features that cannot work on mobile, such as export, are disabled there with an explanation. They must not break on mobile.
 - **Obsidian API.** Use the public API wherever possible. Internal APIs are typed narrowly (see `CommandApp` in `types.ts`). Register event handlers with `this.registerEvent` so they are cleaned up on unload.
 - **Safety.** Rule text can come from imported files. Keep the `MAX_RULE_CHARS` guard before parsing. Wrap `new RegExp` in try/catch, and report failures through a `Notice` or `console.error` prefixed with `Regex Quick Actions:`. Do not throw.
+- **CSS.** Many rules in `styles.css` exist to out-rank a specific Obsidian selector, and several depend on file order. Read the comment above a rule before changing or moving it. Use Obsidian CSS variables, not named colors. Stylelint's `no-descending-specificity` is satisfied by keeping base rules above state rules (`:hover`, `:focus-visible`).
 - **Style.** Use 4-space indentation in TypeScript and tabs in `manifest.json` and `versions.json`. Keep comments to one or two lines stating the non-obvious fact (a specificity conflict, an ordering constraint, why a value is pinned). Leave out narrative and history, and don't comment where the code already says it. Promise-returning calls from sync callbacks use `void`.
 
 ## Changelog, docs, and releases

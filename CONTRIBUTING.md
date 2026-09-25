@@ -35,7 +35,7 @@ Other scripts:
 | Command | What it does |
 | --- | --- |
 | `npm run build` | Type-checks and builds the production `main.js` |
-| `npm run lint` | Runs ESLint with the official Obsidian plugin ruleset |
+| `npm run lint` | Runs ESLint on the TypeScript and stylelint on `styles.css`, both with the official Obsidian plugin review rules |
 | `npm run fix` | Fixes lint issues that can be fixed automatically |
 
 ## Project structure
