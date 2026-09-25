@@ -6,6 +6,12 @@
 
 * **Changelog inside the plugin.** It can now be opened right in Obsidian with the "View changelog" command, and after an update a notice about the new version appears in the settings.
 
+### UI/UX enhancements and bug fixes
+
+* The general settings of the plugin are now united into one block.
+* Switching between the quick actions and sequences tabs is now animated.
+* The plugin name and description were removed from the top of the settings tab, following Obsidian's guidelines.
+
 
 ## 2.1.0
 

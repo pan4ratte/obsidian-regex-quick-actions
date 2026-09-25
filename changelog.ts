@@ -48,6 +48,8 @@ export interface ChangelogNoticeOptions {
     /** The release whose notice was dismissed. */
     dismissedVersion: string;
     onDismiss(): void;
+    /** Runs once the dismissed card has left the DOM. */
+    onRemoved?(): void;
 }
 
 /** The "what's new" card at the head of the settings, shown until dismissed. */
@@ -88,8 +90,12 @@ export function renderChangelogNotice(parent: HTMLElement, options: ChangelogNot
     dismiss.addEventListener('click', () => {
         stacking.disconnect();
         options.onDismiss();
-        if (card.win.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        const remove = () => {
             card.remove();
+            options.onRemoved?.();
+        };
+        if (card.win.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+            remove();
             return;
         }
         // Collapses the card, so the settings below slide up instead of jumping.
@@ -102,6 +108,6 @@ export function renderChangelogNotice(parent: HTMLElement, options: ChangelogNot
             },
             { duration: 180, easing: 'ease-in-out' },
         );
-        animation.onfinish = () => card.remove();
+        animation.onfinish = remove;
     });
 }

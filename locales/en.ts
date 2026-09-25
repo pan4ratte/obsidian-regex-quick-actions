@@ -1,10 +1,8 @@
 export default {
     /* Section headers */
 
-    PLUGIN_SETTINGS_HEADER: "Regex Quick Actions settings",
     MANAGE_SECTION_HEADER: "Manage quick actions",
     GENERAL_SECTION_HEADER: "General",
-    PLUGIN_DESC: "Create and quickly apply regex commands via command palette, context menus and hotkeys. Made for automation purposes.",
 
     /* Generic buttons */
 

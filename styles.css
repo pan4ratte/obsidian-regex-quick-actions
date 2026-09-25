@@ -1,11 +1,3 @@
-/* --- Settings Description --- */
-.orp-settings-description {
-    margin-left: 16px;
-    margin-right: 16px;
-    margin-bottom: 32px;
-    font-size: var(--font-smallest);
-}
-
 /* --- Shared Layout Containers --- */
 .orp-creation-row,
 .orp-saved-rule-item {
@@ -160,7 +152,9 @@
     border-radius: var(--setting-items-radius);
 }
 
+/* `position` anchors the sliding indicator. */
 .orp-tabs {
+    position: relative;
     display: flex;
 }
 
@@ -183,14 +177,15 @@
     transition: color 0.2s ease, border-color 0.2s ease, background-color 0.2s ease;
 }
 
-/* Outer corners only: rounding the inner pair would notch the seam between the tabs. */
-.orp-tab:first-child {
+/* Outer corners only: rounding the inner pair would notch the seam between the tabs.
+   `of-type`, because the indicator div follows the tab buttons. */
+.orp-tab:first-of-type {
     border-top-left-radius: var(--setting-items-radius);
     background: transparent;
     box-shadow: none;
 }
 
-.orp-tab:last-child {
+.orp-tab:last-of-type {
     border-top-right-radius: var(--setting-items-radius);
     background: transparent;
     box-shadow: none;
@@ -203,8 +198,19 @@
 
 .orp-tab.is-active {
     color: var(--interactive-accent);
-    border-bottom-color: 2px solid var(--interactive-accent);
     font-weight: var(--font-semibold);
+}
+
+/* The active tab's underline, drawn over the strip's rule. Tabs share the width equally,
+   so the index alone places it; settings.ts animates the slide on a switch. */
+.orp-tab-indicator {
+    position: absolute;
+    bottom: 0;
+    left: calc(100% / var(--orp-tab-count) * var(--orp-tab-index));
+    width: calc(100% / var(--orp-tab-count));
+    height: 2px;
+    background-color: var(--interactive-accent);
+    pointer-events: none;
 }
 
 /* Each tab holds a full and a short label; the narrow layouts section swaps them. */
@@ -464,6 +470,33 @@
 /* Obsidian's inter-row divider: separate cards are spaced by their own margin. */
 .orp-settings-group .setting-item:not(.setting-item-heading)::before {
     content: none;
+}
+
+/* General options share one card split by dividers, as in Tags Color Files. The row
+   and divider rules tie with the reset above, so they MUST stay below it. */
+.orp-general-group > .setting-items {
+    border: 1px solid var(--setting-items-border-color);
+    background-color: var(--setting-items-background);
+    border-radius: var(--setting-items-radius);
+}
+
+.orp-general-group .setting-item:not(.setting-item-heading) {
+    position: relative;
+    padding: var(--setting-items-padding-y) var(--setting-items-padding-x);
+    border: none;
+    background-color: transparent;
+    border-radius: 0;
+    margin-bottom: 0;
+}
+
+/* Inset like Obsidian's own group dividers. */
+.orp-general-group .setting-items > .setting-item + .setting-item::before {
+    content: "";
+    position: absolute;
+    top: calc(-1 * var(--border-width));
+    left: var(--setting-items-padding-x);
+    right: var(--setting-items-padding-x);
+    border-top: var(--setting-items-divider-width) solid var(--background-modifier-border);
 }
 
 /* Host rows for custom DOM: containers only, with no chrome of their own. */

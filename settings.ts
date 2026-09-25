@@ -377,9 +377,14 @@ export class SequenceModal extends Modal {
 
 type ManagerTab = 'actions' | 'sequences';
 
+/** Tab order in the strip; the indicator is placed and animated by these indexes. */
+const TAB_ORDER: ManagerTab[] = ['actions', 'sequences'];
+
 export class RegexQuickActionsSettingsTab extends PluginSettingTab {
     plugin: RegexQuickActions;
     activeTab: ManagerTab = 'actions';
+    /** The tab just switched away from, so the next render can animate the switch. */
+    private switchedFrom: ManagerTab | null = null;
     showCreationForm = false;
     editingRule: string | null = null;
     tempName = "";
@@ -408,15 +413,15 @@ export class RegexQuickActionsSettingsTab extends PluginSettingTab {
     getSettingDefinitions(): SettingDefinitionItem[] {
         return [
             {
+                // Holds only the "what's new" notice; Obsidian hides the group with it.
                 type: 'group',
                 cls: 'orp-settings-group',
-                heading: t('PLUGIN_SETTINGS_HEADER'),
                 items: [{
-                    name: t('PLUGIN_SETTINGS_HEADER'),
-                    desc: t('PLUGIN_DESC'),
-                    aliases: ['regex', 'regexp', t('RUN_QUICK_ACTION')],
+                    name: t('COMMAND_SHOW_CHANGELOG'),
+                    searchable: false,
+                    visible: () => this.plugin.settings.dismissedChangelogVersion !== this.plugin.manifest.version,
                     render: (setting) => {
-                        const root = this.acquireRoot(setting, 'orp-description-root');
+                        const root = this.acquireRoot(setting, 'orp-changelog-root');
                         root.empty();
                         const version = this.plugin.manifest.version;
                         renderChangelogNotice(root, {
@@ -426,15 +431,15 @@ export class RegexQuickActionsSettingsTab extends PluginSettingTab {
                             onDismiss: () => {
                                 this.plugin.settings.dismissedChangelogVersion = version;
                                 void this.plugin.saveSettings();
-                            }
+                            },
+                            onRemoved: () => this.update()
                         });
-                        root.createEl("p", { text: t('PLUGIN_DESC'), cls: "orp-settings-description" });
                     }
                 }]
             },
             {
                 type: 'group',
-                cls: 'orp-settings-group',
+                cls: 'orp-settings-group orp-general-group',
                 heading: t('GENERAL_SECTION_HEADER'),
                 items: [
                     {
@@ -497,7 +502,7 @@ export class RegexQuickActionsSettingsTab extends PluginSettingTab {
                 items: [{
                     name: t('ADD_QUICK_ACTION'),
                     aliases: [
-                        t('MANAGE_SECTION_HEADER'), t('ACTION_NAME'), t('SEARCH_REGEX'),
+                        'regex', 'regexp', t('RUN_QUICK_ACTION'), t('MANAGE_SECTION_HEADER'), t('ACTION_NAME'), t('SEARCH_REGEX'),
                         t('FLAGS'), t('REPLACEMENT'), t('SET_AS_DEFAULT'), t('EDIT'), t('DELETE'),
                         t('TAB_SEQUENCES'), t('ADD_SEQUENCE')
                     ],
@@ -540,6 +545,28 @@ export class RegexQuickActionsSettingsTab extends PluginSettingTab {
         const panel = root.createDiv({ cls: 'orp-tab-panel', attr: { role: 'tabpanel' } });
         if (this.activeTab === 'actions') this.renderActionsTab(card, panel);
         else this.renderSequencesTab(card, panel);
+
+        if (this.switchedFrom) {
+            this.animateTabSwitch(card, panel, this.switchedFrom);
+            this.switchedFrom = null;
+        }
+    }
+
+    /** Slides the indicator over from the previous tab and fades the new content in. */
+    private animateTabSwitch(card: HTMLElement, panel: HTMLElement, from: ManagerTab) {
+        if (card.win.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
+        const shift = TAB_ORDER.indexOf(from) - TAB_ORDER.indexOf(this.activeTab);
+        card.querySelector('.orp-tab-indicator')?.animate(
+            [{ transform: `translateX(${shift * 100}%)` }, { transform: 'translateX(0)' }],
+            { duration: 250, easing: 'ease-in-out' }
+        );
+
+        // Opacity only: a sliding panel would briefly overflow the pane sideways.
+        const content = Array.from(card.children).filter(el => !el.hasClass('orp-tabs'));
+        for (const el of [...content, panel]) {
+            el.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 250, easing: 'ease-out' });
+        }
     }
 
     /** Redraws the manager with the settings pane left where it was. */
@@ -590,12 +617,20 @@ export class RegexQuickActionsSettingsTab extends PluginSettingTab {
             tab.createSpan({ text: String(count), cls: 'orp-tab-count' });
             tab.onclick = () => {
                 if (isActive) return;
+                this.switchedFrom = this.activeTab;
                 this.activeTab = id;
                 this.resetTempFields();
                 this.showCreationForm = false;
                 this.rerenderInPlace();
             };
         }
+
+        // One underline for the active tab, so a switch can slide it across.
+        bar.createDiv({ cls: 'orp-tab-indicator' });
+        bar.setCssProps({
+            '--orp-tab-count': String(TAB_ORDER.length),
+            '--orp-tab-index': String(TAB_ORDER.indexOf(this.activeTab))
+        });
     }
 
     /** The saved quick actions, with the inline creation form above them. */
