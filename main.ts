@@ -3,6 +3,7 @@ import { Editor, MarkdownView, Menu, MenuItem, Notice, Plugin, TAbstractFile, TF
 import { t } from './i18n';
 import { ActionSequence, CommandApp, DEFAULT_SETTINGS, FileSnapshot, ImportResult, LastRun, MAX_REVERT_CHARS, MAX_RULE_CHARS, QuickJob, RegexQuickActionsSettings, RegexRule, RulesetEntry } from './types';
 import { ConfirmationModal, QuickFindReplaceModal, RegexQuickActionsSettingsTab } from './settings';
+import { ChangelogModal } from './changelog';
 
 /**
  * Expands a replacement string ($1, $&, $<name>, ...) against the arguments
@@ -70,6 +71,12 @@ export default class RegexQuickActions extends Plugin {
             callback: () => {
                 void this.revertLastRun();
             }
+        });
+
+        this.addCommand({
+            id: 'show-changelog',
+            name: t('COMMAND_SHOW_CHANGELOG'),
+            callback: () => new ChangelogModal(this.app).open()
         });
 
         this.settings.sequences.forEach(sequence => {
@@ -239,13 +246,19 @@ export default class RegexQuickActions extends Plugin {
     }
 
     async loadSettings() {
-        this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData() as Partial<RegexQuickActionsSettings>);
+        const raw = await this.loadData() as Partial<RegexQuickActionsSettings> | null;
+        this.settings = Object.assign({}, DEFAULT_SETTINGS, raw);
         // Ensure rulesets map always exists (for older data.json without it)
         if (!this.settings.rulesets) {
             this.settings.rulesets = {};
         }
         if (!Array.isArray(this.settings.sequences)) {
             this.settings.sequences = [];
+        }
+        // A fresh install has no update to announce.
+        if (raw === null) {
+            this.settings.dismissedChangelogVersion = this.manifest.version;
+            await this.saveSettings();
         }
     }
 

@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.2.0
+
+### New features
+
+* **Changelog inside the plugin.** It can now be opened right in Obsidian with the "View changelog" command, and after an update a notice about the new version appears in the settings.
+
+
 ## 2.1.0
 
 ### New features

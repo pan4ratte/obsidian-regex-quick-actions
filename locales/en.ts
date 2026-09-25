@@ -74,6 +74,14 @@ export default {
     EXPORT_IMPORT_DESC: "Export and import your quick actions and sequences.",
     EXPORT_MOBILE_UNAVAILABLE: "Export is desktop only.",
 
+    /* Changelog */
+
+    COMMAND_SHOW_CHANGELOG: "View changelog",
+    CHANGELOG_UPDATED: "Regex Quick Actions was updated to {}",
+    CHANGELOG_SEE_WHATS_NEW: "See what's new",
+    CHANGELOG_DISMISS: "Dismiss",
+    CHANGELOG_DISMISS_TOOLTIP: "Dismiss until the next update",
+
     /* Errors and messages */
 
     NAME_EMPTY_ERR: "Error: Quick action name cannot be empty!",

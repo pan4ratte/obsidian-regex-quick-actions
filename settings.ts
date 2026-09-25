@@ -1,5 +1,6 @@
 import { AbstractInputSuggest, App, ButtonComponent, Modal, Platform, PluginSettingTab, Setting, SettingDefinitionItem, ToggleComponent, Notice, setIcon } from 'obsidian';
 import { t } from './i18n';
+import { renderChangelogNotice } from './changelog';
 import type RegexQuickActions from './main';
 import type { ActionSequence, RegexRule, RulesetEntry } from './types';
 
@@ -417,6 +418,16 @@ export class RegexQuickActionsSettingsTab extends PluginSettingTab {
                     render: (setting) => {
                         const root = this.acquireRoot(setting, 'orp-description-root');
                         root.empty();
+                        const version = this.plugin.manifest.version;
+                        renderChangelogNotice(root, {
+                            app: this.app,
+                            version,
+                            dismissedVersion: this.plugin.settings.dismissedChangelogVersion,
+                            onDismiss: () => {
+                                this.plugin.settings.dismissedChangelogVersion = version;
+                                void this.plugin.saveSettings();
+                            }
+                        });
                         root.createEl("p", { text: t('PLUGIN_DESC'), cls: "orp-settings-description" });
                     }
                 }]

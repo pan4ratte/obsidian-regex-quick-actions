@@ -88,6 +88,8 @@ export interface RegexQuickActionsSettings {
     defaultRule: string | null;
     confirmFolderAction: boolean;
     applyToSelection: boolean;
+    /** The release whose "what's new" notice was dismissed. */
+    dismissedChangelogVersion: string;
 }
 
 export const DEFAULT_SETTINGS: RegexQuickActionsSettings = {
@@ -96,5 +98,6 @@ export const DEFAULT_SETTINGS: RegexQuickActionsSettings = {
     sequences: [],
     defaultRule: null,
     confirmFolderAction: true,
-    applyToSelection: false
+    applyToSelection: false,
+    dismissedChangelogVersion: ''
 };

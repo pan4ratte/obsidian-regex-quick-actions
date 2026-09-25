@@ -43,6 +43,7 @@ Other scripts:
 - `main.ts`: the plugin itself. It registers commands and context menus, parses rules, applies them to notes, and handles revert.
 - `settings.ts`: the settings tab, the quick action and sequence editors, modals, and import/export.
 - `types.ts`: shared types, default settings, and safety limits.
+- `changelog.ts`: the in-app changelog window and the "what's new" notice in the settings.
 - `i18n.ts` and `locales/`: translations.
 - `styles.css`: styles.
 
@@ -55,7 +56,7 @@ Other scripts:
 3. Make sure `npm run build` and `npm run lint` both pass.
 4. Test by hand in your vault. There is no automated test suite, so please describe what you tested in the pull request. For changes to how actions run, try a single note, several selected notes, a folder, selected text, and "Revert last quick action" afterwards.
 5. If the change is user-facing:
-   - add an entry to `CHANGELOG.md` under the topmost version, in the matching section
+   - add a short entry to `CHANGELOG.md` under the topmost version, in the matching section: a bold lead-in and one sentence for a feature, or one line for a fix. `CHANGELOG_RU.md` is the main changelog and `CHANGELOG.md` is translated from it. If you write Russian, add your entry there too; if not, it will be translated for you. Both files are shown to users inside the plugin.
    - update both `README.md` and `README_RU.md` if the feature list or usage changes
 6. Open a pull request against `master` that explains what changed and why.
 
@@ -66,7 +67,8 @@ Please don't bump the version in `manifest.json`, `package.json`, or `versions.j
 - **All UI text goes through translations.** Add every new string to both `locales/en.ts` and `locales/ru.ts` and use it via `t('KEY')`. If you don't speak Russian, add the English text to `ru.ts` too and mention it in the pull request so it can be translated. English strings use sentence case.
 - **Keep it working on mobile.** The plugin is not desktop-only, so don't use Node.js or Electron APIs. If a feature can't work on mobile, disable it there with an explanation instead of letting it break.
 - **Don't break existing setups.** New settings need a default value in `DEFAULT_SETTINGS`. Don't change how command IDs are generated, because users' hotkeys depend on them. Don't change the stored rule format without a migration.
-- **Match the surrounding code.** Use 4-space indentation, comments that explain *why*, and the Obsidian public API wherever possible.
+- **Match the surrounding code.** Use 4-space indentation and the Obsidian public API wherever possible. Keep comments to a line or two that say what isn't obvious from the code.
+- **Regenerate `package-lock.json` on Linux.** If you change dependencies on Windows, regenerate the lockfile in WSL or on Linux. A lockfile written by Windows npm breaks `npm ci` in the release workflow.
 
 ## Translations
 
@@ -75,6 +77,7 @@ The plugin currently ships English and Russian. To add a language:
 1. Copy `locales/en.ts` to `locales/<code>.ts`, where `<code>` is the locale code Obsidian uses (for example `de` or `zh`), and translate the values. Keep `{}` placeholders in place.
 2. Import the file in `i18n.ts` and add it to `MESSAGES`.
 3. Run `npm run build`. The type check will flag any missing keys.
+4. Optionally, translate the changelog shown inside the plugin: add `CHANGELOG_<CODE>.md` and register it in the `CHANGELOGS` map in `changelog.ts`. Languages without one fall back to the English changelog.
 
 Improvements to the existing translations and the READMEs are welcome as well.
 

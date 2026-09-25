@@ -9,6 +9,15 @@ if you want to view the source visit the plugins github repository
 */
 `;
 
+// Imports markdown as plain text, so the changelogs ship inside main.js.
+const markdownText = {
+  name: 'markdown-text',
+  transform(code, id) {
+    if (!id.endsWith('.md')) return null;
+    return { code: `export default ${JSON.stringify(code)};`, map: { mappings: '' } };
+  },
+};
+
 export default {
   input: 'main.ts',
   output: {
@@ -20,6 +29,7 @@ export default {
   },
   external: ['obsidian'],
   plugins: [
+    markdownText,
     typescript(),
     nodeResolve({browser: true}),
     commonjs(),

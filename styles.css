@@ -636,3 +636,160 @@
         flex: 1;
     }
 }
+
+/* --- Changelog notice and window (borrowed from Tags Color Files) --- */
+
+/* `overflow` clips the content while dismissing animates the card to zero height. */
+.orp-changelog-notice {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--size-4-2);
+    margin-bottom: 16px;
+    padding: var(--size-4-2) var(--size-4-4);
+    border: 1px solid var(--background-modifier-border);
+    border-radius: var(--setting-items-radius);
+    background: var(--setting-items-background);
+    overflow: hidden;
+    font-size: var(--font-ui-smaller);
+    color: var(--text-muted);
+}
+
+/* The 16em basis makes the buttons wrap under the text instead of squeezing it. */
+.orp-changelog-message {
+    display: flex;
+    flex: 1 1 16em;
+    align-items: center;
+    gap: var(--size-4-2);
+    min-width: 0;
+}
+
+/* Set by changelog.ts once the buttons have wrapped. Must not change the width. */
+.orp-changelog-notice.is-stacked .orp-changelog-message {
+    justify-content: center;
+    padding-block: var(--size-4-2);
+    text-align: center;
+}
+
+.orp-changelog-notice-text {
+    min-width: 0;
+    color: var(--text-accent);
+}
+
+.orp-changelog-icon {
+    display: flex;
+    flex: none;
+    color: var(--text-accent);
+}
+
+.orp-changelog-icon svg {
+    width: var(--icon-s);
+    height: var(--icon-s);
+}
+
+.orp-changelog-actions {
+    display: flex;
+    gap: var(--size-4-2);
+    margin-left: auto;
+}
+
+.orp-changelog-open,
+.orp-changelog-dismiss {
+    flex: none;
+    font-size: var(--font-ui-smaller);
+}
+
+.is-phone .orp-changelog-notice {
+    gap: var(--size-4-3);
+    padding: var(--size-4-3) var(--size-4-4);
+}
+
+.is-phone .orp-changelog-notice-text {
+    font-size: var(--font-ui-small);
+    line-height: var(--line-height-normal);
+}
+
+.is-phone .orp-changelog-icon svg {
+    width: var(--icon-m);
+    height: var(--icon-m);
+}
+
+/* On phones the buttons share their own line equally. */
+.is-phone .orp-changelog-actions {
+    flex: 1 1 100%;
+    margin-left: 0;
+}
+
+.is-phone .orp-changelog-open,
+.is-phone .orp-changelog-dismiss {
+    flex: 1 1 0;
+}
+
+/* Scoped under the card to out-rank Obsidian's button:hover. Hover only on real
+   pointers, or a tapped button stays accented on touch screens. */
+@media (hover: hover) {
+    .orp-changelog-notice .orp-changelog-open:hover {
+        background-color: var(--interactive-accent-hover);
+        color: var(--text-on-accent);
+    }
+}
+
+.orp-changelog-notice .orp-changelog-open:focus-visible {
+    background-color: var(--interactive-accent-hover);
+    color: var(--text-on-accent);
+}
+
+/* No `markdown-rendered` here: its note-sized fonts would override the sizes below. */
+.orp-markdown-modal {
+    max-width: 680px;
+    /* Obsidian disables selection inside modals. */
+    user-select: text;
+    cursor: auto;
+}
+
+.orp-markdown-modal * {
+    user-select: text;
+}
+
+/* Phone modals are flex columns, where margins add up instead of collapsing. */
+.is-phone .modal-content.orp-markdown-modal {
+    display: block;
+}
+
+.orp-markdown-modal h1 {
+    margin-top: 0;
+    margin-bottom: 12px;
+    font-size: calc(var(--font-ui-large) * 1.2);
+    line-height: var(--line-height-tight);
+}
+
+.orp-markdown-modal h2 {
+    margin-top: var(--size-4-6);
+    margin-bottom: 12px;
+    font-size: var(--font-ui-large);
+}
+
+.orp-markdown-modal h3 {
+    margin-top: 20px;
+    margin-bottom: 8px;
+    font-size: var(--font-ui-medium);
+    color: var(--text-normal);
+}
+
+.orp-markdown-modal p,
+.orp-markdown-modal li {
+    font-size: var(--font-ui-small);
+    color: var(--text-muted);
+    line-height: var(--line-height-normal);
+}
+
+.orp-markdown-modal ul,
+.orp-markdown-modal ol {
+    padding-left: 20px;
+    margin-bottom: 12px;
+}
+
+.orp-markdown-modal hr {
+    margin: 20px 0;
+    border-color: var(--background-modifier-border);
+}

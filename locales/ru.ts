@@ -74,6 +74,14 @@ export default {
     EXPORT_IMPORT_DESC: "Эскпортируйте и импортируйте свои быстрые команды и последовательности команд.",
     EXPORT_MOBILE_UNAVAILABLE: "Экспорт доступен только на компьютере.",
 
+    /* Changelog */
+
+    COMMAND_SHOW_CHANGELOG: "Посмотреть список изменений",
+    CHANGELOG_UPDATED: "Regex Quick Actions обновлён до версии {}",
+    CHANGELOG_SEE_WHATS_NEW: "Что нового",
+    CHANGELOG_DISMISS: "Скрыть",
+    CHANGELOG_DISMISS_TOOLTIP: "Скрыть до следующего обновления",
+
     /* Errors and messages */
 
     NAME_EMPTY_ERR: "Ошибка: Имя быстрой команды не может быть пустым!",
