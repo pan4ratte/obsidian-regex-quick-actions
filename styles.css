@@ -160,9 +160,11 @@
     display: flex;
 }
 
-/* The tabs split the strip, and their bottom borders meet into one rule across it. */
+/* The tabs split the strip, and their bottom borders meet into one rule across it.
+   `min-width: 0` lets a tab shrink below its label, which then ends in an ellipsis. */
 .orp-tab {
     flex: 1;
+    min-width: 0;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -193,11 +195,6 @@
     box-shadow: none;
 }
 
-.orp-tab:hover {
-    background-color: var(--background-modifier-hover);
-    color: var(--text-normal);
-}
-
 .orp-tab.is-active {
     color: var(--interactive-accent);
     font-weight: var(--font-semibold);
@@ -215,10 +212,35 @@
     pointer-events: none;
 }
 
+/* Hover only on real pointers, or a tapped tab keeps the hover background on touch screens. */
+@media (hover: hover) {
+    .orp-tab:hover {
+        background-color: var(--background-modifier-hover);
+        color: var(--text-normal);
+    }
+}
+
+/* Tap feedback matching the hover above, in place of the raised look Obsidian gives a
+   tapped button through `.mobile-tap` (0,2,1). */
+.orp-tabs .orp-tab.mobile-tap {
+    background-color: var(--background-modifier-hover);
+    box-shadow: none;
+}
+
+/* Phones: a lower strip at touch height leaves more room for the list. */
+.is-phone .orp-tab {
+    height: auto;
+    min-height: var(--touch-size-m);
+    padding: var(--size-4-3) var(--size-4-1);
+}
+
 /* Each tab holds a full and a short label; the narrow layouts section swaps them. */
 .orp-tab-label,
 .orp-tab-label-short {
+    min-width: 0;
+    overflow: hidden;
     white-space: nowrap;
+    text-overflow: ellipsis;
 }
 
 .orp-tab-label-short {
@@ -233,6 +255,7 @@
     color: var(--text-muted);
     font-size: var(--font-smallest);
     font-weight: var(--font-normal);
+    flex-shrink: 0;
 }
 
 .orp-tab.is-active .orp-tab-count {
@@ -300,6 +323,171 @@
 .orp-find-replace-note-icon .svg-icon {
     width: var(--icon-s);
     height: var(--icon-s);
+}
+
+/* Anchors the insert button to its field. */
+.orp-find-replace-modal .orp-input-wrap {
+    position: relative;
+}
+
+/* On the label line, taken out of the flow so that line does not grow taller than the
+   flags field's and push the three inputs out of line. */
+.orp-find-replace-modal .orp-insert-button {
+    --icon-size: var(--icon-xs);
+
+    position: absolute;
+    top: -4px;
+    right: 0;
+    padding: 2px;
+}
+
+.orp-find-replace-modal:not(.is-regex) .orp-insert-button {
+    display: none;
+}
+
+/* Search toggles as labelled pills: a bare icon means little without regex knowledge,
+   and tooltips never show on touch screens. A divider line sets them apart from the
+   fields; the margin adds to the card's 12px gap. */
+.orp-find-options {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 4px;
+    padding-top: 16px;
+    border-top: 1px solid var(--background-modifier-border);
+}
+
+/* Scoped to out-rank Obsidian's `button:not(.clickable-icon)` and `button:hover`. */
+.orp-find-options button.orp-find-option {
+    gap: 6px;
+    height: auto;
+    padding: 4px 10px;
+    border: 1px solid var(--background-modifier-border);
+    border-radius: var(--radius-l);
+    background-color: var(--background-primary);
+    box-shadow: none;
+    color: var(--text-muted);
+    font-size: var(--font-ui-smaller);
+}
+
+.orp-find-option-icon {
+    display: flex;
+}
+
+.orp-find-option-icon .svg-icon {
+    width: var(--icon-xs);
+    height: var(--icon-xs);
+}
+
+.orp-find-options button.orp-find-option.is-active {
+    border-color: var(--interactive-accent);
+    background-color: var(--interactive-accent);
+    color: var(--text-on-accent);
+}
+
+/* Restores the focus ring that the `box-shadow: none` above removes. */
+.orp-find-options button.orp-find-option:focus-visible {
+    box-shadow: 0 0 0 3px var(--background-modifier-border-focus);
+}
+
+/* Hover only on real pointers, or a tapped toggle keeps the hover colour on touch screens. */
+@media (hover: hover) {
+    .orp-find-options button.orp-find-option:hover {
+        background-color: var(--background-modifier-hover);
+        color: var(--text-normal);
+    }
+
+    .orp-find-options button.orp-find-option.is-active:hover {
+        background-color: var(--interactive-accent-hover);
+        color: var(--text-on-accent);
+    }
+}
+
+/* The regex that will run, then the match count. A regex has no spaces to wrap at,
+   so it may break anywhere. */
+.orp-find-preview {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 4px 8px;
+    padding: 0 4px;
+    color: var(--text-muted);
+    font-size: var(--font-smallest);
+}
+
+.orp-find-preview-regex {
+    min-width: 0;
+    overflow-wrap: anywhere;
+    font-family: var(--font-monospace);
+    color: var(--text-normal);
+}
+
+.orp-find-preview-count {
+    margin-left: auto;
+    white-space: nowrap;
+}
+
+.orp-find-preview-count.mod-error {
+    color: var(--text-error);
+}
+
+/* The syntax an insert menu item adds, after its description. */
+.orp-insert-token {
+    margin-left: var(--size-4-3);
+    font-family: var(--font-monospace);
+    color: var(--text-faint);
+}
+
+/* Touch: inputs, toggles and insert buttons at Obsidian's touch size. The insert button
+   moves from the label line into the right end of its input, which reserves room for it. */
+.is-mobile .orp-find-replace-modal .orp-input-wrap input.orp-input {
+    min-height: var(--touch-size-s);
+}
+
+.is-mobile .orp-find-replace-modal.is-regex .orp-pattern-field input.orp-input,
+.is-mobile .orp-find-replace-modal.is-regex .orp-replacement-field input.orp-input {
+    padding-right: var(--touch-size-s);
+}
+
+.is-mobile .orp-find-replace-modal .orp-insert-button {
+    --icon-size: var(--icon-s);
+
+    top: auto;
+    bottom: 0;
+    width: var(--touch-size-s);
+    height: var(--touch-size-s);
+    padding: 0;
+}
+
+.is-mobile .orp-find-options button.orp-find-option {
+    min-height: var(--touch-size-s);
+    padding: 0 12px;
+    font-size: var(--font-ui-small);
+}
+
+/* Phones: the toggles share out each row, and the Replace button takes a whole line. */
+.is-phone .orp-find-options button.orp-find-option {
+    flex: 1 1 auto;
+}
+
+.is-phone .orp-find-replace-run {
+    flex: 1 1 100%;
+    margin-left: 0;
+}
+
+/* Phones: label and count share the first line, and the regex gets the second, cut to one
+   line so the preview keeps a fixed height above the keyboard. A tap shows it whole. */
+.is-phone .orp-find-preview-regex {
+    order: 1;
+    flex: 1 1 100%;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+.is-phone .orp-find-preview.is-expanded .orp-find-preview-regex {
+    overflow: visible;
+    white-space: normal;
 }
 
 /* ==========================================================================
@@ -634,6 +822,48 @@
     }
 }
 
+/* Tabs stacked once even the short labels no longer fit side by side (Russian
+   «Последовательности» needs about this much card). Each tab then has the full width
+   back, so it shows its full label. `.orp-tabs .orp-tab` follows `.is-phone .orp-tab`
+   (0,2,0) at equal specificity. */
+@container (max-width: 380px) {
+    .orp-tabs {
+        flex-direction: column;
+    }
+
+    .orp-tabs .orp-tab {
+        padding: var(--size-4-3) var(--size-4-4);
+    }
+
+    /* The card's `overflow` rounds the top corners; per-tab radii would round a corner
+       inside the stack. */
+    .orp-tabs .orp-tab:first-of-type,
+    .orp-tabs .orp-tab:last-of-type {
+        border-radius: 0;
+    }
+
+    .orp-tab-label {
+        display: inline;
+    }
+
+    .orp-tab-label-short {
+        display: none;
+    }
+
+    /* The indicator covers the active tab and draws the underline as its bottom border, so
+       settings.ts can slide it one tab height with a plain `translateY(100%)`. */
+    .orp-tab-indicator {
+        top: calc(100% / var(--orp-tab-count) * var(--orp-tab-index));
+        bottom: auto;
+        left: 0;
+        width: 100%;
+        height: calc(100% / var(--orp-tab-count));
+        box-sizing: border-box;
+        border-bottom: 2px solid var(--interactive-accent);
+        background-color: transparent;
+    }
+}
+
 /* Export/import, and add sequence/add action: one button per line. `flex` is
    reset because in a column it would stretch the buttons vertically instead. */
 @container (max-width: 360px) {
@@ -657,6 +887,24 @@
 
     .orp-flags-field {
         flex: 1 1 auto;
+    }
+
+    /* The find/replace modal keeps the short flags field beside the pattern instead,
+       saving a line of the little room left above a phone keyboard. */
+    .orp-find-replace-modal .orp-fields-row {
+        flex-flow: row wrap;
+    }
+
+    .orp-find-replace-modal .orp-pattern-field {
+        flex: 1 1 0;
+    }
+
+    .orp-find-replace-modal .orp-flags-field {
+        flex: 0 0 72px;
+    }
+
+    .orp-find-replace-modal .orp-replacement-field {
+        flex: 1 1 100%;
     }
 }
 

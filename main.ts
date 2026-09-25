@@ -120,7 +120,8 @@ export default class RegexQuickActions extends Plugin {
     private openQuickFindReplace(editor: Editor) {
         // Reports the scope the run will end up with, decided the same way applyJob does.
         const useSelection = this.settings.applyToSelection && editor.somethingSelected();
-        new QuickFindReplaceModal(this.app, useSelection, (rule: RegexRule) => {
+        const subject = useSelection ? editor.getSelection() : editor.getValue();
+        new QuickFindReplaceModal(this.app, this, useSelection, subject, (rule: RegexRule) => {
             void this.applyJob({ name: t('QUICK_FIND_REPLACE'), steps: [], rules: [rule] }, editor);
         }).open();
     }
@@ -255,6 +256,10 @@ export default class RegexQuickActions extends Plugin {
         if (!Array.isArray(this.settings.sequences)) {
             this.settings.sequences = [];
         }
+        // A fresh object, so toggling an option never writes into DEFAULT_SETTINGS.
+        this.settings.quickFindOptions = Object.assign(
+            {}, DEFAULT_SETTINGS.quickFindOptions, raw?.quickFindOptions
+        );
         // A fresh install has no update to announce.
         if (raw === null) {
             this.settings.dismissedChangelogVersion = this.manifest.version;

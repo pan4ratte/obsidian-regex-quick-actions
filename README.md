@@ -30,6 +30,8 @@ Build chains of quick actions that run one after another. The actions in a seque
 
 The "Quick find/replace" command in the palette opens a window for a single, unsaved run of a regex command: type a regex, its flags and a replacement, and apply them to the open note.
 
+You don't need to know regex syntax for this. The toggles under the fields let you search for plain text, match case, find whole words only, or only the start and end of a line. The "+" button by a field inserts ready-made pieces: any letter or digit, a repeat, a group, and in the replacement, the found text. The resulting regex and the number of matches show under the fields before you run it.
+
 ### 4. Actions applied to selected text only
 
 An option in the settings makes actions and sequences apply not only to the whole file, but also to the text currently selected in a note.

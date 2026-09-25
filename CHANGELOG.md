@@ -4,6 +4,7 @@
 
 ### New features
 
+* **Regex builder in the quick find/replace window.** New "Regex", "Match case", "Whole word", "Line start" and "Line end" toggles let you set up the search even without knowing the syntax, and the "+" button by a field inserts ready-made regex pieces. The resulting regex and the number of matches in the note are shown under the fields.
 * **Changelog inside the plugin.** It can now be opened right in Obsidian with the "View changelog" command, and after an update a notice about the new version appears in the settings.
 
 ### UI/UX enhancements and bug fixes

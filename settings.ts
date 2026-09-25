@@ -1,8 +1,8 @@
-import { AbstractInputSuggest, App, ButtonComponent, Modal, Platform, PluginSettingTab, Setting, SettingDefinitionItem, ToggleComponent, Notice, setIcon } from 'obsidian';
+import { AbstractInputSuggest, App, ButtonComponent, Menu, Modal, Platform, PluginSettingTab, Setting, SettingDefinitionItem, ToggleComponent, Notice, debounce, setIcon, setTooltip } from 'obsidian';
 import { t } from './i18n';
 import { renderChangelogNotice } from './changelog';
 import type RegexQuickActions from './main';
-import type { ActionSequence, RegexRule, RulesetEntry } from './types';
+import type { ActionSequence, QuickFindOptions, RegexRule, RulesetEntry } from './types';
 
 /** Replays the invalid-field border animation on an element. */
 function flashFieldError(el: HTMLElement) {
@@ -28,10 +28,7 @@ function createInputField(
     return input;
 }
 
-/**
- * Checks that the pattern and flags form a usable regex, reporting whichever of the two
- * is at fault. Shared by the settings form and the ad-hoc find/replace.
- */
+/** Checks that the pattern is not blank and compiles with its flags. */
 function validatePattern(
     pattern: string,
     flags: string,
@@ -43,7 +40,16 @@ function validatePattern(
         flashFieldError(patternEl);
         return false;
     }
+    return checkRegex(pattern, flags, patternEl, flagsEl);
+}
 
+/** Compiles the pattern with its flags, reporting whichever of the two is at fault. */
+function checkRegex(
+    pattern: string,
+    flags: string,
+    patternEl: HTMLInputElement,
+    flagsEl: HTMLInputElement
+): boolean {
     try {
         new RegExp(pattern, flags || 'gm');
     } catch (e) {
@@ -93,27 +99,118 @@ export class ConfirmationModal extends Modal {
     }
 }
 
+/** A letter, digit or underscore in any script. `\b` knows only Latin, so it misses Cyrillic words. */
+const WORD_CHAR = '[\\p{L}\\p{N}_]';
+
+/** Past this length the live match count is skipped: it rescans the text on every keystroke. */
+const MAX_PREVIEW_CHARS = 1_000_000;
+
+/** The live match count stops here and shows "N+". */
+const MAX_PREVIEW_MATCHES = 9_999;
+
+/** Escapes every regex syntax character, so the text is found exactly as typed. */
+function escapeRegExp(text: string): string {
+    return text.replace(/[.*+?^${}()|[\]\\/]/g, '\\$&');
+}
+
+/**
+ * Builds the rule that runs from the typed fields and the search toggles. The toggles are
+ * applied here and never written into the fields, so a field always holds what was typed.
+ */
+function buildQuickRule(pattern: string, flags: string, replacement: string, options: QuickFindOptions): RegexRule {
+    let source = options.regex ? pattern : escapeRegExp(pattern);
+    let finalFlags = flags || 'gm';
+    const addFlag = (flag: string) => {
+        if (!finalFlags.includes(flag)) finalFlags += flag;
+    };
+
+    // Without the group, the boundaries would bind to the outer branches of an alternation only.
+    const bounded = options.wholeWord || options.lineStart || options.lineEnd;
+    if (bounded && source.includes('|')) source = `(?:${source})`;
+    if (options.wholeWord) {
+        source = `(?<!${WORD_CHAR})${source}(?!${WORD_CHAR})`;
+        addFlag('u');
+    } else if (/\\[pP]\{/.test(source)) {
+        addFlag('u');
+    }
+    if (options.lineStart) source = `^${source}`;
+    if (options.lineEnd) source = `${source}$`;
+    if (options.lineStart || options.lineEnd) addFlag('m');
+
+    return {
+        pattern: source,
+        flags: finalFlags,
+        // With regex off, "$1" and "$&" in the replacement are plain text as well.
+        replacement: options.regex ? replacement : replacement.replace(/\$/g, '$$$$'),
+        mode: ''
+    };
+}
+
+/** Number of capturing groups in a regex, found by letting an empty alternative match "". */
+function countGroups(pattern: string, flags: string): number {
+    try {
+        return (new RegExp(`${pattern}|`, flags).exec('')?.length ?? 1) - 1;
+    } catch {
+        return 0;
+    }
+}
+
+/**
+ * Puts syntax at the caret. A pair (`after` set) wraps the selected text, or takes the
+ * caret inside when nothing is selected; a single token replaces the selection.
+ */
+function insertIntoField(input: HTMLInputElement, before: string, after: string) {
+    const start = input.selectionStart ?? input.value.length;
+    const end = input.selectionEnd ?? start;
+    const selected = input.value.slice(start, end);
+    const text = after ? before + selected + after : before;
+    input.setRangeText(text, start, end);
+    const caret = after && !selected ? start + before.length : start + text.length;
+    input.focus();
+    input.setSelectionRange(caret, caret);
+    input.dispatchEvent(new Event('input'));
+}
+
+interface InsertItem {
+    title: string;
+    before: string;
+    after?: string;
+}
+
 /**
  * A one-off find/replace over the note in front of the user. The card is the saved quick
  * action card without the parts that only a stored action has: the rule is applied once
  * and then forgotten, so it has no name, cannot be made the default, and has nothing to
- * edit or delete. Under the card sit the note saying which text the run will reach and
- * the button that runs it.
+ * edit or delete. Toggles and "insert" menus in the card build the regex for users who do
+ * not know its syntax, and a preview shows the regex that will run and what it matches.
+ * Under the card sit the note saying which text the run will reach and the button that
+ * runs it.
  */
 export class QuickFindReplaceModal extends Modal {
     private pattern = "";
-    private flags = "gm";
+    private flags: string;
     private replacement = "";
+    private options: QuickFindOptions;
 
     private patternInputEl: HTMLInputElement;
+    private patternLabelEl: HTMLElement | null;
     private flagsInputEl: HTMLInputElement;
+    private replacementInputEl: HTMLInputElement;
+    private previewEl: HTMLElement;
+    private optionButtons = new Map<keyof QuickFindOptions, HTMLElement>();
+
+    private schedulePreview = debounce(() => this.renderPreview(), 150, true);
 
     constructor(
         app: App,
+        private plugin: RegexQuickActions,
         private useSelection: boolean,
+        private subject: string,
         private onReplace: (rule: RegexRule) => void
     ) {
         super(app);
+        this.options = plugin.settings.quickFindOptions;
+        this.flags = this.options.matchCase ? 'gm' : 'gmi';
     }
 
     onOpen() {
@@ -124,14 +221,40 @@ export class QuickFindReplaceModal extends Modal {
         const card = contentEl.createDiv({ cls: 'orp-creation-row' });
         const fieldsRow = card.createDiv({ cls: 'orp-fields-row' });
         this.patternInputEl = createInputField(fieldsRow, t('SEARCH_REGEX'), this.pattern,
-            t('PLACEHOLDER_SEARCH'), 'orp-pattern-field', (v) => this.pattern = v);
+            t('PLACEHOLDER_SEARCH'), 'orp-pattern-field', (v) => {
+                this.pattern = v;
+                this.schedulePreview();
+            });
         this.flagsInputEl = createInputField(fieldsRow, t('FLAGS'), this.flags,
-            t('PLACEHOLDER_FLAGS'), 'orp-flags-field', (v) => this.flags = v);
-        const replacementEl = createInputField(fieldsRow, t('REPLACEMENT'), this.replacement,
+            t('PLACEHOLDER_FLAGS'), 'orp-flags-field', (v) => this.setFlags(v));
+        this.replacementInputEl = createInputField(fieldsRow, t('REPLACEMENT'), this.replacement,
             t('PLACEHOLDER_REPLACEMENT'), 'orp-replacement-field', (v) => this.replacement = v);
+        this.patternLabelEl = this.patternInputEl.parentElement?.querySelector<HTMLElement>('.orp-label') ?? null;
+
+        this.addInsertButton(this.patternInputEl, (menu) => this.fillPatternMenu(menu));
+        this.addInsertButton(this.replacementInputEl, (menu) => this.fillReplacementMenu(menu));
+
+        const optionsRow = card.createDiv({ cls: 'orp-find-options' });
+        this.addOptionButton(optionsRow, 'regex', 'regex', t('FIND_OPTION_REGEX'), t('FIND_OPTION_REGEX_DESC'));
+        this.addOptionButton(optionsRow, 'matchCase', 'case-sensitive',
+            t('FIND_OPTION_MATCH_CASE'), t('FIND_OPTION_MATCH_CASE_DESC'));
+        this.addOptionButton(optionsRow, 'wholeWord', 'whole-word',
+            t('FIND_OPTION_WHOLE_WORD'), t('FIND_OPTION_WHOLE_WORD_DESC'));
+        this.addOptionButton(optionsRow, 'lineStart', 'arrow-left-to-line',
+            t('FIND_OPTION_LINE_START'), t('FIND_OPTION_LINE_START_DESC'));
+        this.addOptionButton(optionsRow, 'lineEnd', 'arrow-right-to-line',
+            t('FIND_OPTION_LINE_END'), t('FIND_OPTION_LINE_END_DESC'));
+
+        this.previewEl = card.createDiv({ cls: 'orp-find-preview' });
+        // Phones cut the regex to one line (styles.css); a tap shows it whole.
+        if (Platform.isPhone) {
+            this.previewEl.addEventListener('click', () =>
+                this.previewEl.toggleClass('is-expanded', !this.previewEl.hasClass('is-expanded'))
+            );
+        }
 
         // Enter runs the replacement from any field: there is nothing else to submit here.
-        [this.patternInputEl, this.flagsInputEl, replacementEl].forEach(input => {
+        [this.patternInputEl, this.flagsInputEl, this.replacementInputEl].forEach(input => {
             input.addEventListener('keydown', (e) => {
                 if (e.key !== 'Enter') return;
                 e.preventDefault();
@@ -156,17 +279,177 @@ export class QuickFindReplaceModal extends Modal {
             .onClick(() => this.replace())
             .buttonEl.addClass('orp-find-replace-run');
 
+        this.renderOptions();
+        this.renderPreview();
         this.patternInputEl.focus();
     }
 
     onClose() {
+        this.schedulePreview.cancel();
         this.contentEl.empty();
     }
 
+    private buildRule(): RegexRule {
+        return buildQuickRule(this.pattern, this.flags, this.replacement, this.options);
+    }
+
+    private addOptionButton(parent: HTMLElement, key: keyof QuickFindOptions, icon: string, label: string, tooltip: string) {
+        const button = parent.createEl('button', { cls: 'orp-find-option' });
+        setIcon(button.createSpan({ cls: 'orp-find-option-icon' }), icon);
+        button.createSpan({ text: label });
+        setTooltip(button, tooltip);
+        button.addEventListener('click', () => this.toggleOption(key));
+        this.optionButtons.set(key, button);
+    }
+
+    private toggleOption(key: keyof QuickFindOptions) {
+        this.options[key] = !this.options[key];
+        // "Match case" and the "i" flag are one setting, shown in two places.
+        if (key === 'matchCase') {
+            const flags = this.flags || 'gm';
+            this.flags = this.options.matchCase ? flags.replace(/i/g, '') : `${flags}i`;
+            this.flagsInputEl.value = this.flags;
+        }
+        void this.plugin.saveSettings();
+        this.renderOptions();
+        this.renderPreview();
+    }
+
+    private setFlags(flags: string) {
+        this.flags = flags;
+        const matchCase = !flags.includes('i');
+        if (matchCase !== this.options.matchCase) {
+            this.options.matchCase = matchCase;
+            void this.plugin.saveSettings();
+            this.renderOptions();
+        }
+        this.schedulePreview();
+    }
+
+    /** Shows the toggle states, and the field labels and menus that depend on "Regex". */
+    private renderOptions() {
+        this.optionButtons.forEach((button, key) => {
+            button.toggleClass('is-active', this.options[key]);
+            button.setAttr('aria-pressed', String(this.options[key]));
+        });
+        const regex = this.options.regex;
+        this.patternLabelEl?.setText(regex ? t('SEARCH_REGEX') : t('FIND_TEXT'));
+        this.patternInputEl.placeholder = regex ? t('PLACEHOLDER_SEARCH') : t('PLACEHOLDER_FIND_TEXT');
+        // Hides the insert buttons (styles.css): regex syntax means nothing in plain text.
+        this.contentEl.toggleClass('is-regex', regex);
+    }
+
+    private addInsertButton(input: HTMLInputElement, fill: (menu: Menu) => void) {
+        const button = input.parentElement?.createEl('button', { cls: 'clickable-icon orp-insert-button' });
+        if (!button) return;
+        setIcon(button, 'plus');
+        setTooltip(button, t('INSERT_SYNTAX'));
+        button.addEventListener('click', () => {
+            const menu = new Menu();
+            fill(menu);
+            const rect = button.getBoundingClientRect();
+            menu.showAtPosition({ x: rect.left, y: rect.bottom });
+        });
+    }
+
+    private addInsertItem(menu: Menu, input: HTMLInputElement, { title, before, after = '' }: InsertItem) {
+        menu.addItem(item => item
+            .setTitle(createFragment(f => {
+                f.createSpan({ text: title });
+                f.createSpan({ text: after ? `${before}…${after}` : before, cls: 'orp-insert-token' });
+            }))
+            .onClick(() => insertIntoField(input, before, after)));
+    }
+
+    private fillPatternMenu(menu: Menu) {
+        const sections: InsertItem[][] = [
+            [
+                { title: t('INSERT_ANY_CHAR'), before: '.' },
+                { title: t('INSERT_ANY_TEXT'), before: '.*?' },
+                { title: t('INSERT_LETTER'), before: '\\p{L}' },
+                { title: t('INSERT_DIGIT'), before: '\\d' },
+                { title: t('INSERT_SPACE'), before: '[ \\t]' }
+            ],
+            [
+                { title: t('INSERT_ONE_OR_MORE'), before: '+' },
+                { title: t('INSERT_ZERO_OR_MORE'), before: '*' },
+                { title: t('INSERT_OPTIONAL'), before: '?' }
+            ],
+            [
+                { title: t('INSERT_GROUP'), before: '(', after: ')' },
+                { title: t('INSERT_OR'), before: '|' }
+            ]
+        ];
+        sections.forEach((items, idx) => {
+            if (idx > 0) menu.addSeparator();
+            items.forEach(item => this.addInsertItem(menu, this.patternInputEl, item));
+        });
+    }
+
+    private fillReplacementMenu(menu: Menu) {
+        this.addInsertItem(menu, this.replacementInputEl, { title: t('INSERT_WHOLE_MATCH'), before: '$&' });
+        menu.addSeparator();
+        const rule = this.buildRule();
+        // "$10" and up read as "$1" followed by a digit once there are fewer groups.
+        const groups = Math.min(countGroups(rule.pattern, rule.flags), 9);
+        if (groups === 0) {
+            menu.addItem(item => item.setTitle(t('INSERT_NO_GROUPS')).setDisabled(true));
+            return;
+        }
+        for (let n = 1; n <= groups; n++) {
+            this.addInsertItem(menu, this.replacementInputEl, { title: t('INSERT_GROUP_REF', n), before: `$${n}` });
+        }
+    }
+
+    /** The regex that will run and how many matches it has in the text the run will reach. */
+    private renderPreview() {
+        this.previewEl.empty();
+        if (!this.pattern) {
+            this.previewEl.createSpan({ text: t('FIND_PREVIEW_EMPTY'), cls: 'orp-find-preview-label' });
+            return;
+        }
+
+        const rule = this.buildRule();
+        this.previewEl.createSpan({ text: t('FIND_PREVIEW_LABEL'), cls: 'orp-find-preview-label' });
+        this.previewEl.createEl('code', { text: `/${rule.pattern}/${rule.flags}`, cls: 'orp-find-preview-regex' });
+        const status = this.previewEl.createSpan({ cls: 'orp-find-preview-count' });
+
+        let regex: RegExp;
+        try {
+            regex = new RegExp(rule.pattern, rule.flags.includes('g') ? rule.flags : `${rule.flags}g`);
+        } catch {
+            status.setText(t('FIND_PREVIEW_INVALID'));
+            status.addClass('mod-error');
+            return;
+        }
+        if (this.subject.length > MAX_PREVIEW_CHARS) {
+            status.remove();
+            return;
+        }
+
+        let count = 0;
+        while (count < MAX_PREVIEW_MATCHES) {
+            const match = regex.exec(this.subject);
+            if (!match) break;
+            count++;
+            // An empty match leaves lastIndex in place, which would find it again forever.
+            if (match[0] === '') regex.lastIndex++;
+        }
+        // Without "g" only the first match is replaced.
+        if (!rule.flags.includes('g')) count = Math.min(count, 1);
+        status.setText(t('FIND_PREVIEW_MATCHES', count === MAX_PREVIEW_MATCHES ? `${count}+` : count));
+    }
+
     private replace() {
-        if (!validatePattern(this.pattern, this.flags, this.patternInputEl, this.flagsInputEl)) return;
-        // Empty replacement deletes the matches, which is the same as the stored "x" mode.
-        this.onReplace({ pattern: this.pattern, flags: this.flags, replacement: this.replacement, mode: '' });
+        if (!this.pattern) {
+            new Notice(t('PATTERN_EMPTY_ERR'));
+            flashFieldError(this.patternInputEl);
+            return;
+        }
+        // Only emptiness is checked on the typed text: spaces alone are a valid plain-text search.
+        const rule = this.buildRule();
+        if (!checkRegex(rule.pattern, rule.flags, this.patternInputEl, this.flagsInputEl)) return;
+        this.onReplace(rule);
         this.close();
     }
 }
@@ -557,8 +840,11 @@ export class RegexQuickActionsSettingsTab extends PluginSettingTab {
         if (card.win.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
 
         const shift = TAB_ORDER.indexOf(from) - TAB_ORDER.indexOf(this.activeTab);
+        // A narrow card stacks the tabs (styles.css), and the indicator then moves vertically.
+        const bar = card.querySelector<HTMLElement>('.orp-tabs');
+        const axis = bar && card.win.getComputedStyle(bar).flexDirection === 'column' ? 'Y' : 'X';
         card.querySelector('.orp-tab-indicator')?.animate(
-            [{ transform: `translateX(${shift * 100}%)` }, { transform: 'translateX(0)' }],
+            [{ transform: `translate${axis}(${shift * 100}%)` }, { transform: `translate${axis}(0)` }],
             { duration: 250, easing: 'ease-in-out' }
         );
 

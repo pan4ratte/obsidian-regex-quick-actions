@@ -81,6 +81,15 @@ export const MAX_REVERT_CHARS = 10_000_000;
  */
 export const MAX_RULE_CHARS = 10_000;
 
+/** The search toggles of the quick find/replace window, remembered between openings. */
+export interface QuickFindOptions {
+    regex: boolean;
+    matchCase: boolean;
+    wholeWord: boolean;
+    lineStart: boolean;
+    lineEnd: boolean;
+}
+
 export interface RegexQuickActionsSettings {
     rules: string[];
     rulesets: Record<string, string>;
@@ -88,6 +97,7 @@ export interface RegexQuickActionsSettings {
     defaultRule: string | null;
     confirmFolderAction: boolean;
     applyToSelection: boolean;
+    quickFindOptions: QuickFindOptions;
     /** The release whose "what's new" notice was dismissed. */
     dismissedChangelogVersion: string;
 }
@@ -99,5 +109,12 @@ export const DEFAULT_SETTINGS: RegexQuickActionsSettings = {
     defaultRule: null,
     confirmFolderAction: true,
     applyToSelection: false,
+    quickFindOptions: {
+        regex: true,
+        matchCase: true,
+        wholeWord: false,
+        lineStart: false,
+        lineEnd: false
+    },
     dismissedChangelogVersion: ''
 };
